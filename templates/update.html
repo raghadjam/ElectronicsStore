@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Update Product</h2>
+    <form method="POST" action="{{ url_for('update') }}">
+        <div class="form-group">
+            <label>Product ID (to Update)</label>
+            <input type="number" name="product_id" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>New Product Name</label>
+            <input type="text" name="product_name" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label>New Category</label>
+            <input type="text" name="category" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>New Price</label>
+            <input type="number" step="0.01" name="price" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>New Stock Quantity</label>
+            <input type="number" name="stock_quantity" class="form-control">
+        </div>
+        <div class="form-group">
+            <label>New Stock Arrival Date</label>
+            <input type="date" name="stock_arrival_date" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-warning mt-3">Update</button>
+    </form>
+</div>
+{% endblock %}

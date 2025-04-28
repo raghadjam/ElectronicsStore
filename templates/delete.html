@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Delete Product</h2>
+    <form method="POST" action="{{ url_for('delete') }}">
+        <div class="form-group">
+            <label>Product ID (to Delete)</label>
+            <input type="number" name="product_id" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-danger mt-3">Delete</button>
+    </form>
+</div>
+{% endblock %}
