@@ -83,5 +83,18 @@ def retrieve():
     conn.close()
     return render_template('retrieve.html', products=products)
 
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+@app.route('/contact')
+def contact():
+    return render_template('contact.html')
+
+
+@app.route('/product')
+def product():
+    return render_template('product.html')
+
 if __name__ == '__main__':
     app.run(debug=True)

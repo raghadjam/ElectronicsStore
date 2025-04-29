@@ -10,38 +10,15 @@
 </head>
 <body>
 
-    <!-- ======= Header / Navbar ======= -->
-    <header id="header" class="fixed-top">
-        <div class="container d-flex align-items-center">
-            <h1 class="logo me-auto"><a href="{{ url_for('home') }}">Electronics Store</a></h1>
-            <nav id="navbar" class="navbar">
-                <ul>
-                    <li><a class="nav-link" href="{{ url_for('insert') }}">Insert</a></li>
-                    <li><a class="nav-link" href="{{ url_for('update') }}">Update</a></li>
-                    <li><a class="nav-link" href="{{ url_for('delete') }}">Delete</a></li>
-                    <li><a class="nav-link" href="{{ url_for('search') }}">Search</a></li>
-                    <li><a class="nav-link" href="{{ url_for('retrieve') }}">Retrieve</a></li>
-                </ul>
-            </nav><!-- .navbar -->
-        </div>
-    </header>
-    <!-- End Header -->
+
 
     <!-- ======= Main Content ======= -->
-    <main id="main" style="margin-top: 100px;">
+    <main id="main">
         {% block content %}
         {% endblock %}
     </main>
     <!-- End Main -->
 
-    <!-- ======= Footer ======= -->
-    <footer id="footer" class="footer">
-        <div class="container">
-            <div class="copyright">
-                &copy; {{ 2025 }} <strong><span>Electronics Store</span></strong>. All Rights Reserved
-            </div>
-        </div>
-    </footer><!-- End Footer -->
 
     <!-- JS Files from Cla Template -->
     <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>

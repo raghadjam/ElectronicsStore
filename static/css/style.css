@@ -32,6 +32,11 @@
 * {
      box-sizing: border-box !important;
 }
+* {
+     margin: 0;
+     padding: 0;
+     box-sizing: border-box;
+ }
 
 html {
      scroll-behavior: smooth;
@@ -44,11 +49,6 @@ body {
      line-height: 1.80857;
      font-weight: normal;
 }
-html, body {
-    margin: 0;
-    padding: 0;
-}
-
 
 a {
      color: #1f1f1f;
@@ -226,7 +226,7 @@ button {
 }
 
 .theme_bg {
-     background: #7087ea;
+     background: #38c8a8;
 }
 
 .margin_top_30 {
@@ -302,7 +302,7 @@ ul.btn li:last-child {
 
 .login_btn a:hover {
      color: #fff !important;
-     background: #7087ea;
+     background: #0808ff;
 }
 
 
@@ -387,8 +387,8 @@ ul.btn li:last-child {
 /** banner section **/
 
 .banner_main {
-    background: url("/static/images/banner.jpg");
-    background-repeat: no-repeat;
+     background: url(../images/banner.jpg);
+     background-repeat: no-repeat;
      min-height: 900px;
      background-size: 100% 100%;
      display: flex;
@@ -397,7 +397,7 @@ ul.btn li:last-child {
      align-items: center;
      position: relative;
 }
-/* .banner_main::before {
+.banner_main::before {
      position: absolute;
      content: "";
      width:50px; 
@@ -416,11 +416,10 @@ ul.btn li:last-child {
      background-repeat: no-repeat;
      bottom: -38px;
      left: 38px;
-} */
+}
 .text-bg {
      text-align: left;
 }
-
 
 .text-bg h1 {
      color: #fff;
@@ -437,31 +436,6 @@ ul.btn li:last-child {
      font-weight: normal;
      padding-bottom: 18px;
      display: block;
-}
-.btn-delete {
-    background-color: #4843a3; /* red */
-    color: white;
-    border: none;
-}
-.btn-search {
-    background-color: #4843a3; /* red */
-    color: white;
-    border: none;
-}
-
-.btn-update {
-    background-color: #4843a3; /* red */
-    color: white;
-    border: none;
-}
-.btn-insert {
-    background-color: #4843a3; /* red */
-    color: white ;
-    border: none;
-}
-.table thead th {
-    background-color: #4843a3 !important; /* Blue background for table header */
-    color: white !important; /* White text for header */
 }
 
 /* Customize the paragraph in the banner */
@@ -509,7 +483,7 @@ ul.btn li:last-child {
      width: 20px;
      height: 20px;
      border-radius: 20px;
-     background: #79b6d7;
+     background: #48ca95;
      margin-right: 5px;
      margin-left: 5px;
 }
@@ -681,14 +655,14 @@ ul.btn li:last-child {
      display: block;
      margin-top: 50px;
      background-color: transparent;
-     border: #7087ea solid 2px;
-     color: #7087ea !important;
+     border: #48ca95 solid 2px;
+     color: #48ca95 !important;
      max-width: 232px;
      padding: 15px 0;
 }
 
 .our_products .read_more:hover {
-     background: #7087ea;
+     background: #48ca95;
      color: #000 !important;
 }
 
@@ -748,11 +722,11 @@ ul.btn li:last-child {
      width: 20px;
      height: 20px;
      border-radius: 20px;
-     background: #7087ea;
+     background: #48ca95;
 }
 
 .customer_Carousel .carousel-indicators li.active {
-     background: #7087ea;
+     background: #4f4aa6;
 }
 
 #myCarousel .carousel-control-next-icon,
@@ -890,7 +864,7 @@ ul.social_icon li a {
 }
 
 ul.social_icon li a:hover {
-     background-color: #7087ea;
+     background-color: #48ca95;
      color: #fff;
 }
 
@@ -941,7 +915,7 @@ ul.social_icon li a:hover {
 .sub_btn {
      font-size: 17px;
      transition: ease-in all 0.5s;
-     background-color:#7087ea;
+     background-color: #48ca95;
      color: #fff;
      padding: 10px 0px;
      max-width: 147px;
@@ -978,7 +952,7 @@ ul.social_icon li a:hover {
 }
 
 .copyright a:hover {
-     color: #7087ea;
+     color: #489cca;
 }
 
 
@@ -1029,16 +1003,4 @@ ul.social_icon li a:hover {
      width: 100%;
 }
 
-
 /** end about **/
-/* Remove top and bottom margin/padding */
-body, html {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-}
-
-/* Optional: Set the main layout container to fill the page */
-.main-layout {
-    min-height: 100%;
-}

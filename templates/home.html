@@ -1,14 +1,119 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
-    <h1>Electronics Store Management</h1>
-    <ul>
-        <li><a href="{{ url_for('insert') }}">Insert Product</a></li>
-        <li><a href="{{ url_for('update') }}">Update Product</a></li>
-        <li><a href="{{ url_for('delete') }}">Delete Product</a></li>
-        <li><a href="{{ url_for('search') }}">Search Product</a></li>
-        <li><a href="{{ url_for('retrieve') }}">Retrieve All Products</a></li>
-    </ul>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <!-- basic -->
+      <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <!-- mobile metas -->
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <!-- site metas -->
+      <title>cla</title>
+      <meta name="keywords" content="">
+      <meta name="description" content="">
+      <meta name="author" content="">
+
+      <!-- CSS -->
+      <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
+
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.mCustomScrollbar.min.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/animate.min.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/normalize.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/font-awesome.min.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/icomoon.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/meanmenu.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/owl.carousel.min.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/swiper.min.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/slick.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.fancybox.min.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}">
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/nice-select.css') }}">
+
+      <!-- favicon -->
+      <link rel="icon" href="{{ url_for('static', filename='images/fevicon.png') }}" type="image/gif">
+   </head>
+   <body class="main-layout">
+      <!-- loader -->
+      <div class="loader_bg">
+         <div class="loader">
+            <img src="{{ url_for('static', filename='images/loading.gif') }}" alt="#" />
+         </div>
+      </div>
+
+      <!-- header -->
+      <header>
+         <div class="header">
+            <div class="container-fluid">
+               <div class="row align-items-center justify-content-center">
+                  <div class="col-xl-9 col-lg-9 col-md-9 col-sm-9">
+                     <nav class="navigation navbar navbar-expand-md navbar-dark">
+                        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExample04"
+                           aria-controls="navbarsExample04" aria-expanded="false" aria-label="Toggle navigation">
+                           <span class="navbar-toggler-icon"></span>
+                        </button>
+                        <div class="collapse navbar-collapse" id="navbarsExample04">
+                           <ul class="navbar-nav mr-auto">
+                              <li class="nav-item active">
+                                <a class="nav-link" href="{{ url_for('home') }}">Home</a>
+                              </li>
+                              <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('about') }}">About</a>
+                              </li>
+                              <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('product') }}">Products</a>
+                              </li>
+                              <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('contact') }}">Contact Us</a>
+                            </li>
+                              <li class="nav-item d_none">
+                                <a class="nav-link" href="{{ url_for('search') }}"><i class="fa fa-search" aria-hidden="true"></i></a>
+                            </li>
+                              <li class="nav-item d_none">
+                                 <a class="nav-link" href="#">Login</a>
+                              </li>
+                           </ul>
+                        </div>
+                     </nav>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </header>
+
+      <!-- banner -->
+      <section class="banner_main">
+         <div class="container">
+            <div class="row">
+               <div class="col-md-6">
+                  <div class="text-bg">
+                     <span>Smarter Devices, Better</span>
+                     <h1>Accessories</h1>
+                     <p>Discover high-quality accessories designed to enhance your productivity and upgrade your digital experience</p>
+                     <a href="#">Buy Now</a>
+                     <a href="contact.html">Contact</a>
+                  </div>
+               </div>
+               <div class="col-md-6">
+                  <div class="text_img">
+                     <img src="{{ url_for('static', filename='images/pct.png') }}" alt="Product Image">
+                  </div>
+               </div>
+            </div>
+         </div>
+      </section>
+
+      <!-- JS scripts -->
+      <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+      <script src="{{ url_for('static', filename='js/popper.min.js') }}"></script>
+      <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+      <script src="{{ url_for('static', filename='js/jquery-3.0.0.min.js') }}"></script>
+      <script src="{{ url_for('static', filename='js/jquery.mCustomScrollbar.concat.min.js') }}"></script>
+      <script src="{{ url_for('static', filename='js/custom.js') }}"></script>
+   </body>
+</html>
 {% endblock %}
