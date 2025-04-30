@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 from db import get_connection
+from datetime import date
 
 app = Flask(__name__)
 
@@ -54,11 +55,27 @@ def update():
 @app.route('/delete', methods=['GET', 'POST'])
 def delete():
     if request.method == 'POST':
+        product_id = request.form['product_id']
+        data = (
+            request.form['product_id'],
+            request.form['product_name'],
+            request.form['category'],
+            request.form['price'],
+            request.form['stock_quantity'],
+            request.form['stock_arrival_date'],
+            date.today()  # Add the current date here
+        )
         conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM Product WHERE product_id=%s", (request.form['product_id'],))
+        cursor = conn.cursor()   
+        cursor.execute(
+            "INSERT INTO electronics_store.Product_Archive (product_id, product_name, category, price, stock_quantity, stock_arrival_date, archived_at) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
+            data  # Pass the tuple with date today as part of the data
+        )
+        
+        cursor.execute("DELETE FROM Product WHERE product_id = %s", (product_id,))  # Correct SQL syntax
         conn.commit()
         conn.close()
+
         return redirect(url_for('home'))
     return render_template('delete.html')
 
