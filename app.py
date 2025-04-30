@@ -63,16 +63,16 @@ def delete():
             request.form['price'],
             request.form['stock_quantity'],
             request.form['stock_arrival_date'],
-            date.today()  # Add the current date here
+            date.today()  
         )
         conn = get_connection()
         cursor = conn.cursor()   
         cursor.execute(
             "INSERT INTO electronics_store.Product_Archive (product_id, product_name, category, price, stock_quantity, stock_arrival_date, archived_at) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-            data  # Pass the tuple with date today as part of the data
+            data  
         )
         
-        cursor.execute("DELETE FROM Product WHERE product_id = %s", (product_id,))  # Correct SQL syntax
+        cursor.execute("DELETE FROM Product WHERE product_id = %s", (product_id,))  
         conn.commit()
         conn.close()
 
