@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for
-from db import get_connection
 from datetime import date
+from flask import Flask, render_template, request, redirect, url_for
+import mysql
+from db import get_connection
 
 app = Flask(__name__)
 
@@ -56,28 +57,51 @@ def update():
 def delete():
     if request.method == 'POST':
         product_id = request.form['product_id']
-        data = (
-            request.form['product_id'],
-            request.form['product_name'],
-            request.form['category'],
-            request.form['price'],
-            request.form['stock_quantity'],
-            request.form['stock_arrival_date'],
-            date.today()  
-        )
-        conn = get_connection()
-        cursor = conn.cursor()   
-        cursor.execute(
-            "INSERT INTO electronics_store.Product_Archive (product_id, product_name, category, price, stock_quantity, stock_arrival_date, archived_at) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-            data  
-        )
-        
-        cursor.execute("DELETE FROM Product WHERE product_id = %s", (product_id,))  
-        conn.commit()
-        conn.close()
 
-        return redirect(url_for('home'))
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+
+            # Get product details for archiving
+            cursor.execute("SELECT product_id, product_name, category, price, stock_quantity, stock_arrival_date FROM Product WHERE product_id = %s", (product_id,))
+            product = cursor.fetchone()
+
+            if not product:
+                conn.close()
+                # flash("Product not found.")
+                return redirect(url_for('delete'))
+
+            # Archive the product
+            archive_data = product + (date.today(),)
+            cursor.execute(
+                "INSERT INTO Product_Archive (product_id, product_name, category, price, stock_quantity, stock_arrival_date, archived_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)", 
+                archive_data
+            )
+
+            # Delete related entries from OrderDetails and PurchaseOrderDetails (to avoid foreign key constraint issues)
+            cursor.execute("DELETE FROM OrderDetails WHERE product_id = %s", (product_id,))
+            cursor.execute("DELETE FROM PurchaseOrderDetails WHERE product_id = %s", (product_id,))
+
+            # Now delete the product from Product
+            cursor.execute("DELETE FROM Product WHERE product_id = %s", (product_id,))
+
+            # Commit and close the connection
+            conn.commit()
+            conn.close()
+
+            # flash("Product successfully deleted and archived.")
+            return redirect(url_for('home'))
+
+        except mysql.connector.Error as err:
+            if conn:
+                conn.rollback()
+                conn.close()
+            # flash(f"Error: {err}")
+            return redirect(url_for('delete'))
+
     return render_template('delete.html')
+
 
 @app.route('/search', methods=['GET', 'POST'])
 def search():
