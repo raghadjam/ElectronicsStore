@@ -8,8 +8,8 @@ CREATE TABLE Customer (
     phone_number VARCHAR(20),
     email_address VARCHAR(100),
     city VARCHAR(50),
-    shipping_address VARCHAR(200),
-    order_count INT DEFAULT 0
+    shipping_address VARCHAR(200) NOT NULL,
+    order_count INT DEFAULT 0 CHECK (order_count >= 0)
 );
 
 CREATE TABLE Employee (
@@ -25,17 +25,17 @@ CREATE TABLE Employee (
 
 CREATE TABLE HourlyEmployee (
     employee_id INT PRIMARY KEY,
-    hours_worked INT,
-    hourly_wages DECIMAL(10,2),
+    hours_worked INT NOT NULL CHECK (hours_worked >= 0),
+    hourly_wages DECIMAL(10,2) NOT NULL CHECK (hourly_wages > 0),
     FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
 );
 
 CREATE TABLE ContractEmployee (
     employee_id INT PRIMARY KEY,
-    contract_id INT,
-    contract_start_date DATE,
-    contract_end_date DATE,
-    salary DECIMAL(10,2),
+    contract_id INT NOT NULL,
+    contract_start_date DATE NOT NULL,
+    contract_end_date DATE NOT NULL,
+    salary DECIMAL(10,2) NOT NULL CHECK (salary > 0),
     FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
 );
 
@@ -43,8 +43,8 @@ CREATE TABLE Product (
     product_id INT PRIMARY KEY,
     product_name VARCHAR(100) NOT NULL,
     category VARCHAR(50),
-    price DECIMAL(10,2),
-    stock_quantity INT,
+    price DECIMAL(10,2) NOT NULL CHECK (price > 0),
+    stock_quantity INT NOT NULL CHECK (stock_quantity >= 0),
     stock_arrival_date DATE
 );
 
@@ -60,10 +60,10 @@ CREATE TABLE Product_Archive (
 
 CREATE TABLE `Order` (
     order_id INT PRIMARY KEY,
-    customer_id INT,
+    customer_id INT NOT NULL,
     employee_id INT,
-    total_price DECIMAL(10,2),
-    order_date DATE,
+    total_price DECIMAL(10,2) NOT NULL CHECK (total_price >= 0),
+    order_date DATE NOT NULL,
     expected_received_date DATE,
     actual_received_date DATE,
     FOREIGN KEY (customer_id) REFERENCES Customer(customer_id),
@@ -71,11 +71,11 @@ CREATE TABLE `Order` (
 );
 
 CREATE TABLE OrderDetails (
-    order_details_id INT PRIMARY KEY,
     order_id INT,
     product_id INT,
-    price DECIMAL(10,2),
-    quantity INT,
+    price DECIMAL(10,2) NOT NULL CHECK (price > 0),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    PRIMARY KEY (order_id, product_id),
     FOREIGN KEY (order_id) REFERENCES `Order`(order_id) on delete cascade,
     FOREIGN KEY (product_id) REFERENCES Product(product_id)
 );
@@ -89,40 +89,42 @@ CREATE TABLE Supplier (
 
 CREATE TABLE PurchaseOrder (
     purchase_order_id INT PRIMARY KEY,
-    employee_id INT,
-    supplier_id INT,
-    total_price DECIMAL(10,2),
-    order_date DATE,
+    employee_id INT NOT NULL,
+    supplier_id INT NOT NULL,
+    total_price DECIMAL(10,2) NOT NULL CHECK (total_price >= 0),
+    order_date DATE NOT NULL,
     expected_received_date DATE,
     actual_received_date DATE,
+    delivery_status VARCHAR(50) DEFAULT 'Pending' 
+        CHECK (delivery_status IN ('Pending', 'Shipped', 'Received')),
     FOREIGN KEY (employee_id) REFERENCES Employee(employee_id),
     FOREIGN KEY (supplier_id) REFERENCES Supplier(supplier_id)
 );
 
 CREATE TABLE PurchaseOrderDetails (
-    purchase_order_details_id INT PRIMARY KEY,
     purchase_order_id INT,
     product_id INT,
-    price DECIMAL(10,2),
-    quantity INT,
+    price DECIMAL(10,2) NOT NULL CHECK (price > 0),
+    quantity INT NOT NULL CHECK (quantity > 0),
+    PRIMARY KEY (purchase_order_id, product_id),
     FOREIGN KEY (purchase_order_id) REFERENCES PurchaseOrder(purchase_order_id),
     FOREIGN KEY (product_id) REFERENCES Product(product_id)
 );
 
 CREATE TABLE Invoice (
     invoice_id INT PRIMARY KEY,
-    order_id INT,
-    invoice_date DATE,
-    total_amount DECIMAL(10,2),
+    order_id INT NOT NULL,
+    invoice_date DATE NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL CHECK (total_amount >= 0),
     FOREIGN KEY (order_id) REFERENCES `Order`(order_id)
 );
 
 CREATE TABLE Payment (
     payment_id INT PRIMARY KEY,
-    invoice_id INT,
-    payment_date DATE,
-    amount_paid DECIMAL(10,2),
-    payment_method VARCHAR(50),
+    invoice_id INT NOT NULL,
+    payment_date DATE NOT NULL,
+    amount_paid DECIMAL(10,2) NOT NULL CHECK (amount_paid >= 0),
+    payment_method VARCHAR(50) NOT NULL,
     FOREIGN KEY (invoice_id) REFERENCES Invoice(invoice_id)
 );
 
