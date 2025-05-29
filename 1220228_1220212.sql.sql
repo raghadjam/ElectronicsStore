@@ -9,7 +9,8 @@ CREATE TABLE Customer (
     email_address VARCHAR(100),
     city VARCHAR(50),
     shipping_address VARCHAR(200) NOT NULL,
-    order_count INT DEFAULT 0 CHECK (order_count >= 0)
+    order_count INT DEFAULT 0 CHECK (order_count >= 0),
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE Employee (
@@ -20,6 +21,7 @@ CREATE TABLE Employee (
     email_address VARCHAR(100),
     hire_date DATE,
     manager_id INT,
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (manager_id) REFERENCES Employee(employee_id)
 );
 
@@ -27,6 +29,7 @@ CREATE TABLE HourlyEmployee (
     employee_id INT PRIMARY KEY,
     hours_worked INT NOT NULL CHECK (hours_worked >= 0),
     hourly_wages DECIMAL(10,2) NOT NULL CHECK (hourly_wages > 0),
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
 );
 
@@ -36,6 +39,7 @@ CREATE TABLE ContractEmployee (
     contract_start_date DATE NOT NULL,
     contract_end_date DATE NOT NULL,
     salary DECIMAL(10,2) NOT NULL CHECK (salary > 0),
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
 );
 
@@ -44,6 +48,7 @@ CREATE TABLE Product (
     product_name VARCHAR(100) NOT NULL,
     category VARCHAR(50),
     price DECIMAL(10,2) NOT NULL CHECK (price > 0),
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     stock_quantity INT NOT NULL CHECK (stock_quantity >= 0),
     stock_arrival_date DATE
 );
@@ -66,6 +71,7 @@ CREATE TABLE `Order` (
     order_date DATE NOT NULL,
     expected_received_date DATE,
     actual_received_date DATE,
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (customer_id) REFERENCES Customer(customer_id),
     FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
 );
@@ -76,6 +82,7 @@ CREATE TABLE OrderDetails (
     price DECIMAL(10,2) NOT NULL CHECK (price > 0),
     quantity INT NOT NULL CHECK (quantity > 0),
     PRIMARY KEY (order_id, product_id),
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (order_id) REFERENCES `Order`(order_id) on delete cascade,
     FOREIGN KEY (product_id) REFERENCES Product(product_id)
 );
@@ -84,7 +91,8 @@ CREATE TABLE Supplier (
     supplier_id INT PRIMARY KEY,
     supplier_name VARCHAR(100) NOT NULL,
     email_address VARCHAR(100),
-    phone_number VARCHAR(20)
+    phone_number VARCHAR(20),
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 CREATE TABLE PurchaseOrder (
@@ -97,6 +105,7 @@ CREATE TABLE PurchaseOrder (
     actual_received_date DATE,
     delivery_status VARCHAR(50) DEFAULT 'Pending' 
         CHECK (delivery_status IN ('Pending', 'Shipped', 'Received')),
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (employee_id) REFERENCES Employee(employee_id),
     FOREIGN KEY (supplier_id) REFERENCES Supplier(supplier_id)
 );
@@ -106,6 +115,7 @@ CREATE TABLE PurchaseOrderDetails (
     product_id INT,
     price DECIMAL(10,2) NOT NULL CHECK (price > 0),
     quantity INT NOT NULL CHECK (quantity > 0),
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     PRIMARY KEY (purchase_order_id, product_id),
     FOREIGN KEY (purchase_order_id) REFERENCES PurchaseOrder(purchase_order_id),
     FOREIGN KEY (product_id) REFERENCES Product(product_id)
@@ -116,6 +126,7 @@ CREATE TABLE Invoice (
     order_id INT NOT NULL,
     invoice_date DATE NOT NULL,
     total_amount DECIMAL(10,2) NOT NULL CHECK (total_amount >= 0),
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (order_id) REFERENCES `Order`(order_id)
 );
 
@@ -125,6 +136,7 @@ CREATE TABLE Payment (
     payment_date DATE NOT NULL,
     amount_paid DECIMAL(10,2) NOT NULL CHECK (amount_paid >= 0),
     payment_method VARCHAR(50) NOT NULL,
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (invoice_id) REFERENCES Invoice(invoice_id)
 );
 
