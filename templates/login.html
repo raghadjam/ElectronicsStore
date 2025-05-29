@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Meta Data -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Title of Site -->
+    <title>Login</title>
+
+    <!-- Font Family -->
+    <link href="https://fonts.googleapis.com/css?family=Poppins:100,200,300,400,500,600,700,800,900" rel="stylesheet" />
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}" />
+
+    <!-- Font Awesome 5 CDN -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+
+    <!-- Custom Stylesheet -->
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
+            background-image: url("{{ url_for('static', filename='images/contact.jpg') }}");
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-size: cover; 
+            color: #fff;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .service-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeInUp 1s;
+        }
+
+        .single-service-item {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin: 0 15px;
+            text-align: center;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeInUp 1s;
+            color: #343a40;
+            transition: transform 0.3s ease;
+        }
+
+        .single-service-item:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            background-color: #B2D7F5 !important;
+        }
+
+        .single-service-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            color: #343a40; /* Icon color */
+        }
+
+        .single-service-item h2 {
+            font-size: 24px;
+            margin-bottom: 0;
+            font-size: 20px !important; 
+
+        }
+
+        .single-service-item h2 a {
+            color: #343a40;
+            text-decoration: none;
+            color: black !important;
+
+        }
+
+        .single-service-item h2 a:hover {
+            text-decoration: underline;
+        }
+ 
+        .single-service-item:hover .single-service-icon {
+        color: black !important; 
+        font-size: 60px !important;    
+        }
+
+        #choose-career {
+            color: white;
+            font-family: 'Poppins', sans-serif;
+            font-size: 30px;
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <section id="service" class="service">
+        <div class="container">
+            <div class="service-content">
+                <div class="row" style="display: flex; justify-content: center; width: 100%; max-width: 1000px; margin: auto;">
+                    <div class="col-md-4 col-sm-6" style="display: flex; justify-content: center;">
+                        <div class="single-service-item">
+                            <div class="single-service-icon">
+                                <i class="fas fa-user-tie"></i>
+                            </div>
+                            <h2><a href="{{ url_for('saleslog') }}">Salesperson</a></h2>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6" style="display: flex; justify-content: center;">
+                        <div class="single-service-item">
+                            <div class="single-service-icon">
+                                <i class="fas fa-briefcase"></i>
+                            </div>
+                            <h2><a href="{{ url_for('managerlog') }}">Manager</a></h2>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-sm-6" style="display: flex; justify-content: center;">
+                        <div class="single-service-item">
+                            <div class="single-service-icon">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <h2><a href="{{ url_for('customerlog') }}">Customer</a></h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="choose-career">Choose Your Career To Login</div>
+
+        </div><!--/.container-->
+    </section><!--/.service-->
+</body>
+</html>

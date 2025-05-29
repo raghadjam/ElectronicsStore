@@ -137,5 +137,21 @@ def contact():
 def product():
     return render_template('product.html')
 
+@app.route('/login')
+def login():
+    return render_template('login.html')
+
+@app.route('/customerlog')
+def customerlog():
+    return render_template('customerlog.html')
+
+@app.route('/managerlog')
+def managerlog():
+    return render_template('managerlog.html')
+
+@app.route('/saleslog')
+def saleslog():
+    return render_template('saleslog.html')
+
 if __name__ == '__main__':
     app.run(debug=True)

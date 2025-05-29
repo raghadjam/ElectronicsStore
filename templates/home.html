@@ -20,19 +20,6 @@
 
       <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
       <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-       <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.mCustomScrollbar.min.css') }}">
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/animate.min.css') }}">
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/normalize.css') }}"> -->
-      <!--<link rel="stylesheet" href="{{ url_for('static', filename='css/font-awesome.min.css') }}">
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/icomoon.css') }}">
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/meanmenu.css') }}">
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/owl.carousel.min.css') }}">
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/swiper.min.css') }}">
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/slick.css') }}">
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.fancybox.min.css') }}">
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}">
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/nice-select.css') }}"> -->
 
       <!-- favicon -->
       <link rel="icon" href="{{ url_for('static', filename='images/fevicon.png') }}" type="image/gif">
@@ -74,7 +61,7 @@
                                 <a class="nav-link" href="{{ url_for('search') }}"><i class="fa fa-search" aria-hidden="true"></i></a>
                             </li>
                               <li class="nav-item d_none">
-                                 <a class="nav-link" href="#">Login</a>
+                                 <a class="nav-link" href="{{ url_for('login') }}">Login</a>
                               </li>
                            </ul>
                         </div>
@@ -94,8 +81,8 @@
                      <span>Smarter Devices, Better</span>
                      <h1>Accessories</h1>
                      <p>Discover high-quality accessories designed to enhance your productivity and upgrade your digital experience</p>
-                     <a href="#">Buy Now</a>
-                     <a href="contact.html">Contact</a>
+                     <a href="{{ url_for('product') }}">Buy Now</a>
+                     <a href="{{ url_for('contact') }}">Contact</a>
                   </div>
                </div>
                <div class="col-md-6">
