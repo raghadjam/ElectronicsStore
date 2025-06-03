@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <!-- Meta Data -->
     <meta charset="utf-8" />
@@ -16,10 +17,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}" />
 
     <!-- Font Awesome 5 CDN -->
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
 
     <!-- Custom Stylesheet -->
     <style>
@@ -29,7 +27,7 @@
             background-image: url("{{ url_for('static', filename='images/contact.jpg') }}");
             background-position: center center;
             background-repeat: no-repeat;
-            background-size: cover; 
+            background-size: cover;
             color: #fff;
             margin: 0;
             height: 100vh;
@@ -65,20 +63,21 @@
 
         .single-service-item:hover {
             transform: translateY(-10px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
             background-color: #B2D7F5 !important;
         }
 
         .single-service-icon {
             font-size: 60px;
             margin-bottom: 20px;
-            color: #343a40; /* Icon color */
+            color: #343a40;
+            /* Icon color */
         }
 
         .single-service-item h2 {
             font-size: 24px;
             margin-bottom: 0;
-            font-size: 20px !important; 
+            font-size: 20px !important;
 
         }
 
@@ -92,10 +91,10 @@
         .single-service-item h2 a:hover {
             text-decoration: underline;
         }
- 
+
         .single-service-item:hover .single-service-icon {
-        color: black !important; 
-        font-size: 60px !important;    
+            color: black !important;
+            font-size: 60px !important;
         }
 
         #choose-career {
@@ -111,6 +110,7 @@
                 transform: translateY(20px);
                 opacity: 0;
             }
+
             to {
                 transform: translateY(0);
                 opacity: 1;
@@ -118,17 +118,19 @@
         }
     </style>
 </head>
+
 <body>
     <section id="service" class="service">
         <div class="container">
             <div class="service-content">
-                <div class="row" style="display: flex; justify-content: center; width: 100%; max-width: 1000px; margin: auto;">
+                <div class="row"
+                    style="display: flex; justify-content: center; width: 100%; max-width: 1000px; margin: auto;">
                     <div class="col-md-4 col-sm-6" style="display: flex; justify-content: center;">
                         <div class="single-service-item">
                             <div class="single-service-icon">
                                 <i class="fas fa-user-tie"></i>
                             </div>
-                            <h2><a href="{{ url_for('saleslog') }}">Salesperson</a></h2>
+                            <h2><a href="{{ url_for('emplog') }}">Employee</a></h2>
                         </div>
                     </div>
                     <div class="col-md-4 col-sm-6" style="display: flex; justify-content: center;">
@@ -154,4 +156,5 @@
         </div><!--/.container-->
     </section><!--/.service-->
 </body>
+
 </html>

@@ -145,9 +145,75 @@ def login():
 def customerlog():
     return render_template('customerlog.html')
 
-@app.route('/managerlog')
+
+
+
+@app.route('/managerlog', methods=['GET', 'POST'])
 def managerlog():
+    if request.method == 'POST':
+        manager_id = request.form['manager_id']
+        password = request.form['password']
+
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Check if this ID belongs to a manager (someone who manages others)
+        query = """
+            SELECT * FROM Employee 
+            WHERE employee_id = %s AND employee_id IN (
+                SELECT DISTINCT manager_id FROM Employee WHERE manager_id IS NOT NULL
+            )
+        """
+        cursor.execute(query, (manager_id,))
+        manager = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if manager:
+            if password == '1234':  
+                #session['user_id'] = manager['employee_id']
+                #session['role'] = 'manager'
+                #flash('Welcome, Manager!', 'success')
+                return render_template('manager.html')
+            else:
+                #flash('Incorrect password', 'danger')
+                return redirect(url_for('managerlog'))
+        else:
+            #flash('Manager not found or not authorized', 'warning')
+            return redirect(url_for('managerlog'))
+
     return render_template('managerlog.html')
+
+
+@app.route('/emplog', methods=['GET', 'POST'])
+def emplog():
+     if request.method == 'POST':
+        employee_id = request.form['employee_id']
+        password = request.form['password']
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        query = "SELECT * FROM Employee WHERE employee_id = %s"
+        cursor.execute(query, (employee_id,))
+        emp = cursor.fetchone()
+        print(emp)
+
+        cursor.close()
+        conn.close()
+
+        if emp:
+            if password == '1234':  
+                return render_template('emp.html')
+            else:
+                print("wrong pass")
+                return redirect(url_for('emplog'))  
+        else:
+            print("No such an employee")
+            return redirect(url_for('emplog'))
+
+     return render_template('emplog.html')
+
 
 @app.route('/saleslog')
 def saleslog():

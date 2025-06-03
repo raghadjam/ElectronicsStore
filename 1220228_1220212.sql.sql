@@ -20,7 +20,8 @@ CREATE TABLE Employee (
     phone_number VARCHAR(20),
     email_address VARCHAR(100),
     hire_date DATE,
-    manager_id INT,
+    manager_id INT default -1,
+    password VARCHAR(20),
     is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (manager_id) REFERENCES Employee(employee_id)
 );
