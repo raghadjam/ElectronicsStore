@@ -191,11 +191,11 @@ VALUES
 
 INSERT INTO Product (product_id, product_name, category, price, stock_quantity, stock_arrival_date)
 VALUES
-(1, 'Laptop', 'Electronics', 999.99, 25, '2024-03-15'),
+(1, 'Laptop', 'Electronics', 999.99, 25, '2024-03-09'),
 (2, 'Smartphone', 'Electronics', 599.99, 50, '2024-02-10'),
 (3, 'Headphones', 'Accessories', 129.99, 100, '2024-01-25'),
 (4, 'Smartwatch', 'Accessories', 199.99, 75, '2024-02-01'),
-(9, 'mic', 'Electronics', 99.99, 50, '2024-03-15'),
+(9, 'mic', 'Electronics', 99.99, 50, '2024-03-01'),
 (6, 'mouse', 'Accessories', 199.99, 150, '2024-02-10');
 
 
@@ -229,28 +229,30 @@ VALUES
 
 INSERT INTO Product (product_id, product_name, category, price, stock_quantity, stock_arrival_date)
 VALUES
-(5, 'Tablet', 'Electronics', 349.99, 40, '2024-01-30'),
-(7, 'Wireless Keyboard', 'Accessories', 79.99, 85, '2024-02-20'),
-(8, 'Gaming Monitor', 'Electronics', 299.99, 30, '2024-03-05'),
-(10, 'USB-C Cable', 'Accessories', 19.99, 200, '2024-01-15'),
-(11, 'Webcam', 'Electronics', 89.99, 60, '2024-02-25'),
-(12, 'Power Bank', 'Accessories', 49.99, 120, '2024-01-20'),
-(13, 'Bluetooth Speaker', 'Electronics', 159.99, 45, '2024-03-10'),
-(14, 'Phone Case', 'Accessories', 24.99, 180, '2024-02-05'),
-(15, 'Laptop Stand', 'Accessories', 39.99, 70, '2024-01-18'),
-(16, 'External Hard Drive', 'Electronics', 129.99, 55, '2024-02-28');
+(5, 'Tablet', 'Electronics', 349.99, 40, '2023-01-30'),
+(7, 'Wireless Keyboard', 'Accessories', 79.99, 85, '2023-02-20'),
+(8, 'Gaming Monitor', 'Electronics', 299.99, 30, '2022-03-05'),
+(10, 'USB-C Cable', 'Accessories', 19.99, 200, '2022-01-15'),
+(11, 'Webcam', 'Electronics', 89.99, 60, '2021-02-25'),
+(12, 'Power Bank', 'Accessories', 49.99, 120, '2022-01-20'),
+(13, 'Bluetooth Speaker', 'Electronics', 159.99, 45, '2020-03-10'),
+(14, 'Phone Case', 'Accessories', 24.99, 180, '2020-02-05'),
+(15, 'Laptop Stand', 'Accessories', 39.99, 70, '2020-01-18'),
+(16, 'External Hard Drive', 'Electronics', 129.99, 55, '2021-02-28');
 
-Insert into `Order`(order_id, customer_id, employee_id, order_date, expected_received_date, actual_received_date)
-VALUES (1, 1, 2, '2024-04-01', '2024-04-05', '2024-04-04'),
-(2, 2, 3, '2024-04-02', '2024-04-06', '2024-04-05'),
-(3, 3, 5, '2024-04-03', '2024-04-07', '2024-04-06'),
-(4, 4, 2, '2024-04-04', '2024-04-08', NULL),
-(5, 5, 8, '2024-04-05', '2024-04-09', NULL),
-(6, 6, 3, '2024-04-06', '2024-04-10', NULL),
-(7, 7, 5, '2024-04-07', '2024-04-11', NULL),
-(8, 8, 2, '2024-04-08', '2024-04-12', NULL),
-(9, 9, 8, '2024-04-09', '2024-04-13', NULL),
-(10, 10, 3, '2024-04-10', '2024-04-14', NULL);
+INSERT INTO `Order` (order_id, customer_id, employee_id, order_date, expected_received_date, actual_received_date)
+VALUES
+(1, 1, 2, '2023-12-15', '2023-12-20', '2023-12-22'),
+(2, 2, 3, '2024-01-10', '2024-01-15', '2024-01-14'),
+(3, 3, 5, '2024-03-05', '2024-03-10', '2024-03-09'),
+(4, 4, 2, '2024-03-20', '2024-03-25', NULL),
+(5, 5, 8, '2024-05-10', '2024-05-15', '2024-05-14'),
+(6, 6, 3, '2024-05-15', '2024-05-20', '2024-05-25'), 
+(7, 7, 5, '2025-06-01', '2025-06-06', NULL),
+(8, 8, 2, '2025-06-03', '2025-06-08', NULL),
+(9, 9, 8, '2025-06-04', '2025-06-09', NULL),
+(10, 10, 3, '2025-06-06', '2025-06-11', NULL);
+
 
 
 INSERT INTO OrderDetails ( order_id, product_id, price, quantity)
