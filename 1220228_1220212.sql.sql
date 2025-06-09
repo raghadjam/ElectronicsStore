@@ -17,7 +17,7 @@ CREATE TABLE Customer (
 CREATE TABLE Employee (
     employee_id INT PRIMARY KEY,
     employee_name VARCHAR(100) NOT NULL,
-    emp_role VARCHAR(50),
+    emp_role VARCHAR(50) CHECK (emp_role IN ('Manager',  'Assistant Manager', 'Customer Service', 'Procurement Specialist', 'Inventory Specialist')),
     phone_number VARCHAR(20),
     email_address VARCHAR(100),
     hire_date DATE,
@@ -26,6 +26,7 @@ CREATE TABLE Employee (
     is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (manager_id) REFERENCES Employee(employee_id)
 );
+
 
 CREATE TABLE HourlyEmployee (
     employee_id INT PRIMARY KEY,
@@ -149,15 +150,31 @@ VALUES
 (2, 'Bob Smith', '555-5678', 'bob.smith@email.com', 'Los Angeles', '456 Oak St, Los Angeles, CA', 3, '123'),
 (3, 'Charlie Brown', '555-8765', 'charlie.brown@email.com', 'Chicago', '789 Pine St, Chicago, IL', 7, '123');
 
-INSERT INTO Employee (employee_id, employee_name, emp_role, phone_number, email_address, hire_date, manager_id)
+INSERT INTO Employee (employee_id, employee_name, emp_role, phone_number, email_address, hire_date, manager_id, password)
 VALUES
-(1, 'David Williams', 'Manager', '555-1111', 'david.williams@email.com', '2021-06-01', NULL),
-(2, 'Emily Davis', 'Salesperson', '555-2222', 'emily.davis@email.com', '2022-07-10', 1),
-(3, 'Frank Harris', 'Salesperson', '555-3333', 'frank.harris@email.com', '2022-08-15', 1);
+    (1, 'David Williams', 'Manager', '555-1111', 'david.williams@email.com', '2021-06-01', NULL, 'mgr123'),
+    (2, 'Emily Davis', 'Customer Service', '555-2222', 'emily.davis@email.com', '2022-07-10', 1, 'emp222'),
+    (3, 'Frank Harris', 'Customer Service', '555-3333', 'frank.harris@email.com', '2022-08-15', 1, 'emp333'),
+    (4, 'Grace Thompson', 'Assistant Manager', '555-4444', 'grace.thompson@email.com', '2021-09-15', 1, 'emp444'),
+    (5, 'Henry Clark', 'Inventory Specialist', '555-5555', 'henry.clark@email.com', '2023-01-20', 4, 'emp555'),
+    (6, 'Iris Rodriguez', 'Inventory Specialist', '555-6666', 'iris.rodriguez@email.com', '2023-03-10', 4, 'emp666'),
+    (7, 'Jack Lee', 'Customer Service', '555-7777', 'jack.lee@email.com', '2023-05-01', 1, 'emp777'),
+    (8, 'Karen Walker', 'Customer Service', '555-8888', 'karen.walker@email.com', '2023-07-15', 1, 'emp888'),
+    (9, 'Lucas Hall', 'Procurement Specialist', '555-9999', 'lucas.hall@email.com', '2022-12-01', 1, 'emp999'),
+    (10, 'Mia Scott', 'Procurement Specialist', '555-1010', 'mia.scott@email.com', '2023-02-05', 1, 'emp101'),
+    (11, 'Noah Green', 'Inventory Specialist', '555-1212', 'noah.green@email.com', '2023-04-18', 4, 'emp121'),
+    (12, 'Olivia King', 'Customer Service', '555-1313', 'olivia.king@email.com', '2023-06-22', 1, 'emp131'),
+    (13, 'Peter White', 'Procurement Specialist', '555-1414', 'peter.white@email.com', '2022-11-10', 1, 'emp141'),
+    (14, 'Quinn Baker', 'Customer Service', '555-1515', 'quinn.baker@email.com', '2023-08-30', 1, 'emp151'),
+    (15, 'Rachel Young', 'Inventory Specialist', '555-1616', 'rachel.young@email.com', '2023-09-05', 4, 'emp161');-- 
 
 INSERT INTO HourlyEmployee (employee_id, hours_worked, hourly_wages)
 VALUES
-(2, 40, 15.00);
+(2, 40, 15.00),
+(5, 35, 14.50),
+(6, 40, 18.00),
+(7, 32, 13.75),
+(8, 37, 15.25);
 
 INSERT INTO Contract (contract_id, contract_start_date, contract_end_date, salary)
 VALUES
@@ -165,6 +182,12 @@ VALUES
 (1002, '2023-01-01', '2024-12-31', 65000.00),
 (1003, '2023-01-01', '2024-06-30', 55000.00);
 
+
+INSERT INTO ContractEmployee (employee_id, contract_id)
+VALUES
+(3, 1001),
+(5, 1002),
+(9, 1003);
 
 INSERT INTO Product (product_id, product_name, category, price, stock_quantity, stock_arrival_date)
 VALUES
@@ -221,28 +244,6 @@ VALUES
 (8, 'Hannah White', '555-2468', 'hannah.white@email.com', 'San Diego', '258 Spruce Dr, San Diego, CA', 3, 'pass987'),
 (9, 'Ivan Martinez', '555-3691', 'ivan.martinez@email.com', 'Dallas', '369 Poplar Blvd, Dallas, TX', 8, 'secure654'),
 (10, 'Julia Garcia', '555-7410', 'julia.garcia@email.com', 'San Jose', '741 Ash Way, San Jose, CA', 2, 'mypass147');
-
-INSERT INTO Employee (employee_id, employee_name, emp_role, phone_number, email_address, hire_date, manager_id, password)
-VALUES
-(4, 'Grace Thompson', 'Assistant Manager', '555-4444', 'grace.thompson@email.com', '2021-09-15', 1, 'emp123'),
-(5, 'Henry Clark', 'Salesperson', '555-5555', 'henry.clark@email.com', '2023-01-20', 4, 'emp456'),
-(6, 'Iris Rodriguez', 'Inventory Specialist', '555-6666', 'iris.rodriguez@email.com', '2023-03-10', 4, 'emp789'),
-(7, 'Jack Lee', 'Customer Service', '555-7777', 'jack.lee@email.com', '2023-05-01', 1, 'emp321'),
-(8, 'Karen Walker', 'Salesperson', '555-8888', 'karen.walker@email.com', '2023-07-15', 4, 'emp654'),
-(9, 'Lucas Hall', 'Procurement Specialist', '555-9999', 'lucas.hall@email.com', '2022-12-01', 1, 'emp987');
-
-INSERT INTO HourlyEmployee (employee_id, hours_worked, hourly_wages)
-VALUES
-(5, 35, 14.50),
-(6, 40, 18.00),
-(7, 32, 13.75),
-(8, 37, 15.25);
-
-INSERT INTO ContractEmployee (employee_id, contract_id)
-VALUES
-(3, 1001),
-(4, 1002),
-(9, 1003);
 
 
 INSERT INTO Product (product_id, product_name, category, price, stock_quantity, stock_arrival_date)
