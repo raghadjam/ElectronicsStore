@@ -35,16 +35,20 @@ CREATE TABLE HourlyEmployee (
     FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
 );
 
-CREATE TABLE ContractEmployee (
-    employee_id INT PRIMARY KEY,
-    contract_id INT NOT NULL,
+CREATE TABLE Contract (
+    contract_id INT PRIMARY KEY,
     contract_start_date DATE NOT NULL,
     contract_end_date DATE NOT NULL,
     salary DECIMAL(10,2) NOT NULL CHECK (salary > 0),
-    is_valid BOOLEAN NOT NULL DEFAULT TRUE,
-    FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE
 );
-
+CREATE TABLE ContractEmployee (
+    employee_id INT PRIMARY KEY,
+    contract_id INT NOT NULL,
+    is_valid BOOLEAN NOT NULL DEFAULT TRUE,
+    FOREIGN KEY (employee_id) REFERENCES Employee(employee_id),
+    FOREIGN KEY (contract_id) REFERENCES Contract(contract_id)
+);
 CREATE TABLE Product (
     product_id INT PRIMARY KEY,
     product_name VARCHAR(100) NOT NULL,
@@ -69,7 +73,6 @@ CREATE TABLE `Order` (
     order_id INT PRIMARY KEY,
     customer_id INT NOT NULL,
     employee_id INT,
-    total_price DECIMAL(10,2) NOT NULL CHECK (total_price >= 0),
     order_date DATE NOT NULL,
     expected_received_date DATE,
     actual_received_date DATE,
@@ -101,7 +104,6 @@ CREATE TABLE PurchaseOrder (
     purchase_order_id INT PRIMARY KEY,
     employee_id INT NOT NULL,
     supplier_id INT NOT NULL,
-    total_price DECIMAL(10,2) NOT NULL CHECK (total_price >= 0),
     order_date DATE NOT NULL,
     expected_received_date DATE,
     actual_received_date DATE,
@@ -127,7 +129,6 @@ CREATE TABLE Invoice (
     invoice_id INT PRIMARY KEY,
     order_id INT NOT NULL,
     invoice_date DATE NOT NULL,
-    total_amount DECIMAL(10,2) NOT NULL CHECK (total_amount >= 0),
     is_valid BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (order_id) REFERENCES `Order`(order_id)
 );
@@ -158,9 +159,19 @@ INSERT INTO HourlyEmployee (employee_id, hours_worked, hourly_wages)
 VALUES
 (2, 40, 15.00);
 
-INSERT INTO ContractEmployee (employee_id, contract_id, contract_start_date, contract_end_date, salary)
+INSERT INTO Contract (contract_id, contract_start_date, contract_end_date, salary)
 VALUES
-(3, 1001, '2023-01-01', '2023-12-31', 50000.00);
+(1001, '2023-01-01', '2023-12-31', 50000.00),
+(1002, '2023-01-01', '2024-12-31', 65000.00),
+(1003, '2023-01-01', '2024-06-30', 55000.00);
+
+
+INSERT INTO ContractEmployee (employee_id, contract_id)
+VALUES
+(3, 1001),
+(4, 1002),
+(9, 1003);
+
 
 INSERT INTO Product (product_id, product_name, category, price, stock_quantity, stock_arrival_date)
 VALUES
@@ -171,10 +182,10 @@ VALUES
 (9, 'mic', 'Electronics', 99.99, 50, '2024-03-15'),
 (6, 'mouse', 'Accessories', 199.99, 150, '2024-02-10');
 
-INSERT INTO `Order` (order_id, customer_id, employee_id, total_price, order_date, expected_received_date, actual_received_date)
+INSERT INTO `Order` (order_id, customer_id, employee_id, order_date, expected_received_date, actual_received_date)
 VALUES
-(1, 1, 2, 1599.97, '2024-04-01', '2024-04-05', '2024-04-04'),
-(2, 2, 3, 599.99, '2024-04-02', '2024-04-06', '2024-04-05');
+(1, 1, 2, '2024-04-01', '2024-04-05', '2024-04-04'),
+(2, 2, 3, '2024-04-02', '2024-04-06', '2024-04-05');
 
 INSERT INTO OrderDetails ( order_id, product_id, price, quantity)
 VALUES
@@ -187,10 +198,10 @@ VALUES
 (1, 'Tech Supplies Co.', 'supplier1@email.com', '555-0001'),
 (2, 'Gadget Distributors', 'supplier2@email.com', '555-0002');
 
-INSERT INTO PurchaseOrder (purchase_order_id, employee_id, supplier_id, total_price, order_date, expected_received_date, actual_received_date)
+INSERT INTO PurchaseOrder (purchase_order_id, employee_id, supplier_id, order_date, expected_received_date, actual_received_date)
 VALUES
-(1, 1, 1, 25000.00, '2024-03-15', '2024-03-25', '2024-03-24'),
-(2, 2, 2, 15000.00, '2024-03-18', '2024-03-28', '2024-03-27');
+(1, 1, 1, '2024-03-15', '2024-03-25', '2024-03-24'),
+(2, 2, 2, '2024-03-18', '2024-03-28', '2024-03-27');
 
 INSERT INTO PurchaseOrderDetails ( purchase_order_id, product_id, price, quantity)
 VALUES
@@ -198,10 +209,10 @@ VALUES
 (1, 2, 599.99, 30),
 ( 2, 3, 129.99, 50);
 
-INSERT INTO Invoice (invoice_id, order_id, invoice_date, total_amount)
+INSERT INTO Invoice (invoice_id, order_id, invoice_date)
 VALUES
-(1, 1, '2024-04-04', 1599.97),
-(2, 2, '2024-04-05', 599.99);
+(1, 1, '2024-04-04'),
+(2, 2, '2024-04-05');
 
 INSERT INTO Payment (payment_id, invoice_id, payment_date, amount_paid, payment_method)
 VALUES
@@ -234,11 +245,6 @@ VALUES
 (7, 32, 13.75),
 (8, 37, 15.25);
 
-INSERT INTO ContractEmployee (employee_id, contract_id, contract_start_date, contract_end_date, salary)
-VALUES
-(4, 1002, '2023-01-01', '2024-12-31', 65000.00),
-(9, 1003, '2023-01-01', '2024-06-30', 55000.00);
-
 
 INSERT INTO Product (product_id, product_name, category, price, stock_quantity, stock_arrival_date)
 VALUES
@@ -253,16 +259,16 @@ VALUES
 (15, 'Laptop Stand', 'Accessories', 39.99, 70, '2024-01-18'),
 (16, 'External Hard Drive', 'Electronics', 129.99, 55, '2024-02-28');
 
-INSERT INTO `Order` (order_id, customer_id, employee_id, total_price, order_date, expected_received_date, actual_received_date)
+INSERT INTO `Order` (order_id, customer_id, employee_id, order_date, expected_received_date, actual_received_date)
 VALUES
-(3, 3, 5, 449.98, '2024-04-03', '2024-04-07', '2024-04-06'),
-(4, 4, 2, 729.97, '2024-04-04', '2024-04-08', NULL),
-(5, 5, 8, 179.98, '2024-04-05', '2024-04-09', NULL),
-(6, 6, 3, 599.96, '2024-04-06', '2024-04-10', NULL),
-(7, 7, 5, 889.95, '2024-04-07', '2024-04-11', NULL),
-(8, 8, 2, 249.97, '2024-04-08', '2024-04-12', NULL),
-(9, 9, 8, 419.96, '2024-04-09', '2024-04-13', NULL),
-(10, 10, 3, 169.98, '2024-04-10', '2024-04-14', NULL);
+(3, 3, 5, '2024-04-03', '2024-04-07', '2024-04-06'),
+(4, 4, 2, '2024-04-04', '2024-04-08', NULL),
+(5, 5, 8, '2024-04-05', '2024-04-09', NULL),
+(6, 6, 3, '2024-04-06', '2024-04-10', NULL),
+(7, 7, 5, '2024-04-07', '2024-04-11', NULL),
+(8, 8, 2, '2024-04-08', '2024-04-12', NULL),
+(9, 9, 8, '2024-04-09', '2024-04-13', NULL),
+(10, 10, 3, '2024-04-10', '2024-04-14', NULL);
 
 INSERT INTO OrderDetails (order_id, product_id, price, quantity)
 VALUES
@@ -303,12 +309,12 @@ VALUES
 (5, 'Component Central', 'supplier5@email.com', '555-0005'),
 (6, 'AccessoryHub', 'supplier6@email.com', '555-0006');
 
-INSERT INTO PurchaseOrder (purchase_order_id, employee_id, supplier_id, total_price, order_date, expected_received_date, actual_received_date, delivery_status)
+INSERT INTO PurchaseOrder (purchase_order_id, employee_id, supplier_id, order_date, expected_received_date, actual_received_date, delivery_status)
 VALUES
-(3, 9, 3, 18000.00, '2024-03-20', '2024-03-30', '2024-03-29', 'Received'),
-(4, 6, 4, 12500.00, '2024-03-22', '2024-04-01', NULL, 'Shipped'),
-(5, 9, 5, 8500.00, '2024-03-25', '2024-04-05', NULL, 'Pending'),
-(6, 6, 6, 6000.00, '2024-03-28', '2024-04-08', NULL, 'Pending');
+(3, 9, 3, '2024-03-20', '2024-03-30', '2024-03-29', 'Received'),
+(4, 6, 4, '2024-03-22', '2024-04-01', NULL, 'Shipped'),
+(5, 9, 5, '2024-03-25', '2024-04-05', NULL, 'Pending'),
+(6, 6, 6, '2024-03-28', '2024-04-08', NULL, 'Pending');
 
 INSERT INTO PurchaseOrderDetails (purchase_order_id, product_id, price, quantity)
 VALUES
@@ -328,13 +334,13 @@ VALUES
 (6, 15, 39.99, 50),
 (6, 6, 199.99, 20); 
 
-INSERT INTO Invoice (invoice_id, order_id, invoice_date, total_amount)
+INSERT INTO Invoice (invoice_id, order_id, invoice_date)
 VALUES
-(3, 3, '2024-04-06', 449.98),
-(4, 4, '2024-04-04', 729.97),
-(5, 5, '2024-04-05', 179.98),
-(6, 6, '2024-04-06', 599.96),
-(7, 7, '2024-04-07', 889.95);
+(3, 3, '2024-04-06'),
+(4, 4, '2024-04-04'),
+(5, 5, '2024-04-05'),
+(6, 6, '2024-04-06'),
+(7, 7, '2024-04-07');
 
 INSERT INTO Payment (payment_id, invoice_id, payment_date, amount_paid, payment_method)
 VALUES
