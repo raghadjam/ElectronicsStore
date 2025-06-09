@@ -198,16 +198,6 @@ VALUES
 (9, 'mic', 'Electronics', 99.99, 50, '2024-03-15'),
 (6, 'mouse', 'Accessories', 199.99, 150, '2024-02-10');
 
-INSERT INTO `Order` (order_id, customer_id, employee_id, order_date, expected_received_date, actual_received_date)
-VALUES
-(1, 1, 2, '2024-04-01', '2024-04-05', '2024-04-04'),
-(2, 2, 3, '2024-04-02', '2024-04-06', '2024-04-05');
-
-INSERT INTO OrderDetails ( order_id, product_id, price, quantity)
-VALUES
-(1, 1, 999.99, 1),
-(1, 3, 129.99, 2),
-(2, 2, 599.99, 1);
 
 INSERT INTO Supplier (supplier_id, supplier_name, email_address, phone_number)
 VALUES
@@ -225,15 +215,6 @@ VALUES
 (1, 2, 599.99, 30),
 ( 2, 3, 129.99, 50);
 
-INSERT INTO Invoice (invoice_id, order_id, invoice_date)
-VALUES
-(1, 1, '2024-04-04'),
-(2, 2, '2024-04-05');
-
-INSERT INTO Payment (payment_id, invoice_id, payment_date, amount_paid, payment_method)
-VALUES
-(1, 1, '2024-04-04', 1599.97, 'Credit Card'),
-(2, 2, '2024-04-05', 599.99, 'PayPal');
 
 INSERT INTO Customer (customer_id, customer_name, phone_number, email_address, city, shipping_address, order_count, Customer_password) 
 VALUES 
@@ -259,8 +240,9 @@ VALUES
 (15, 'Laptop Stand', 'Accessories', 39.99, 70, '2024-01-18'),
 (16, 'External Hard Drive', 'Electronics', 129.99, 55, '2024-02-28');
 
-INSERT INTO `Order` (order_id, customer_id, employee_id, order_date, expected_received_date, actual_received_date)
-VALUES
+Insert into `Order`(order_id, customer_id, employee_id, order_date, expected_received_date, actual_received_date)
+VALUES (1, 1, 2, '2024-04-01', '2024-04-05', '2024-04-04'),
+(2, 2, 3, '2024-04-02', '2024-04-06', '2024-04-05'),
 (3, 3, 5, '2024-04-03', '2024-04-07', '2024-04-06'),
 (4, 4, 2, '2024-04-04', '2024-04-08', NULL),
 (5, 5, 8, '2024-04-05', '2024-04-09', NULL),
@@ -270,9 +252,12 @@ VALUES
 (9, 9, 8, '2024-04-09', '2024-04-13', NULL),
 (10, 10, 3, '2024-04-10', '2024-04-14', NULL);
 
-INSERT INTO OrderDetails (order_id, product_id, price, quantity)
+
+INSERT INTO OrderDetails ( order_id, product_id, price, quantity)
 VALUES
--- Order 3
+(1, 1, 999.99, 1),
+(1, 3, 129.99, 2),
+(2, 2, 599.99, 1),
 (3, 5, 349.99, 1),
 (3, 12, 49.99, 2),
 -- Order 4
@@ -301,6 +286,16 @@ VALUES
 -- Order 10
 (10, 15, 39.99, 2),
 (10, 16, 129.99, 1);
+
+INSERT INTO Invoice (invoice_id, order_id, invoice_date)
+VALUES
+(1, 1, '2024-04-04'),
+(2, 2, '2024-04-05');
+
+INSERT INTO Payment (payment_id, invoice_id, payment_date, amount_paid, payment_method)
+VALUES
+(1, 1, '2024-04-04', 1599.97, 'Credit Card'),
+(2, 2, '2024-04-05', 599.99, 'PayPal');
 
 INSERT INTO Supplier (supplier_id, supplier_name, email_address, phone_number)
 VALUES
