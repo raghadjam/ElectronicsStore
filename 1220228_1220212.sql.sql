@@ -166,13 +166,6 @@ VALUES
 (1003, '2023-01-01', '2024-06-30', 55000.00);
 
 
-INSERT INTO ContractEmployee (employee_id, contract_id)
-VALUES
-(3, 1001),
-(4, 1002),
-(9, 1003);
-
-
 INSERT INTO Product (product_id, product_name, category, price, stock_quantity, stock_arrival_date)
 VALUES
 (1, 'Laptop', 'Electronics', 999.99, 25, '2024-03-15'),
@@ -244,6 +237,12 @@ VALUES
 (6, 40, 18.00),
 (7, 32, 13.75),
 (8, 37, 15.25);
+
+INSERT INTO ContractEmployee (employee_id, contract_id)
+VALUES
+(3, 1001),
+(4, 1002),
+(9, 1003);
 
 
 INSERT INTO Product (product_id, product_name, category, price, stock_quantity, stock_arrival_date)
