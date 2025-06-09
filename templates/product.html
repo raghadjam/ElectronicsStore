@@ -1,148 +1,301 @@
 <!DOCTYPE html>
 <html lang="en">
-   <head>
-      <!-- basic -->
-      <meta charset="utf-8">
-      <meta http-equiv="X-UA-Compatible" content="IE=edge">
-      <!-- mobile metas -->
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <meta name="viewport" content="initial-scale=1, maximum-scale=1">
-      <!-- site metas -->
-      <title>cla</title>
-      <meta name="keywords" content="">
-      <meta name="description" content="">
-      <meta name="author" content="">
-      <!-- bootstrap css -->
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
-      <!-- style css -->
-      <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-      <!-- Responsive-->
-      <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
-      <!-- fevicon -->
-      <link rel="icon" href="{{ url_for('static', filename='images/fevicon.png') }}" type="image/gif" />
-      <!-- Scrollbar Custom CSS -->
-      <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.mCustomScrollbar.min.css') }}"> -->
-      <!-- Tweaks for older IEs-->
-      <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
-      <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/2.1.5/jquery.fancybox.min.css" media="screen"> --> -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"> {# Assuming you have a static/style.css #}
+
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+        /* General Body Styling - Ensures original font remains */
+        body {
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8f9fa; /* Light grey background for the whole page */
+        }
+
+        /* Header Styling */
+        .header {
+            background-color: #4843a3; /* Dark blue background for the header */
+            padding: 15px 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- CRITICAL CHANGES FOR NAVBAR CENTERING --- */
+        .navigation {
+            width: 100%; /* Make sure the nav element takes full available width */
+            display: flex; /* Enable flexbox for the nav container */
+            justify-content: center; /* Center the nav items horizontally */
+            align-items: center; /* Center the nav items vertically */
+        }
+
+        .navbar-collapse {
+            justify-content: center !important; /* Forces centering of navbar items within collapse */
+            text-align: center; /* For older browser fallback or specific content */
+            width: 100%; /* Ensure collapse takes full width */
+        }
       
-      <style>
-         /* Header Styling */
-         .header .container-fluid {
-            display: flex;
-            justify-content: center;
-         }
+        h2.text-center.mb-5 {
+            font-size: 3rem;          /* Bigger size */
+            font-weight: 300;         /* Extra bold */
+            color: #4843a3;           /* A nice dark blue-gray */
+            letter-spacing: 2px;      /* Space out letters */
+            margin-bottom: 3rem;      /* Extra spacing below */
+        }
 
-         .header .container-fluid .row {
-            width: 100%;
-            justify-content: center;
-         }
 
-         .header .container-fluid .row .col-xl-9 {
-            display: flex;
-            justify-content: center;
-         }
+        .navbar-nav {
+            display: flex; /* Ensure navbar items are flex items */
+            justify-content: center; /* Center the nav items (Home, About, etc.) */
+            flex-grow: 1; /* Allow the ul to grow and take available space for centering */
+            margin: 0; /* Remove default margins that might interfere with centering */
+            padding: 0; /* Remove default padding */
+        }
 
-         .header .container-fluid .row .col-xl-9 .navbar-nav {
-            display: flex;
-            justify-content: center;
-         }
+        .navbar-nav .nav-item {
+            margin: 0 10px; /* Spacing between nav items */
+        }
 
-         .navbar-nav .nav-link {
-            padding: 10px 20px;
-            color: white;
+        /* NAVIGATION: Default text color white, hover/active text color light blue, NO background change */
+        .navbar-nav .nav-link {
+            padding: 10px 20px; /* Keep original padding for clickable area */
+            color: white !important; /* Force text to be WHITE by default */
             text-align: center;
-         }
+            text-decoration: none; /* No underline */
+            background-color: transparent !important; /* Force no background */
+            transition: color 0.3s ease; /* Smooth transition for text color */
+        }
 
-         /* Navigation Box Styling */
-         .nav-box {
+        .navbar-nav .nav-link:hover {
+            color: #7087ea !important; /* Force text to be LIGHT BLUE on hover */
+            background-color: transparent !important; /* Force no background */
+        }
+
+        /* Active navigation item: "Products" will have the lighter blue color */
+        .navbar-nav .nav-item.active .nav-link {
+            color: #7087ea !important; /* Force active text to be LIGHT BLUE */
+            background-color: transparent !important; /* Force no background */
+        }
+        
+        /* Ensure search icon and login text are also white by default */
+        .navbar-nav .nav-item.d_none .nav-link {
+            color: white !important;
+        }
+
+        .navbar-toggler {
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3e%3cpath stroke='rgba%28255, 255, 255, 0.5%29' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        }
+
+        /* Combo Cards Section Styling */
+        .combo-cards-section {
+            background-color: #eee; /* Light grey background for the cards section */
+            padding: 50px 0;
+        }
+
+        .combo-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1); /* Slightly more pronounced shadow */
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 25px; /* Spacing between cards in a column */
+        }
+
+        .combo-card:hover {
+            transform: translateY(-8px); /* More pronounced lift on hover */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15); /* Darker shadow on hover */
+        }
+
+        .combo-header {
+            padding: 1.2rem; /* Slightly more padding */
+            font-weight: 600; /* Bolder font for header */
+            background-color: #f2f2f2; /* Light background for header */
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .combo-card img {
+            width: 100%; /* Ensure image fills its container */
+            height: 200px; /* Fixed height for consistent image size */
+            object-fit: cover; /* Cover the area without distortion */
+        }
+
+        .combo-body {
+            padding: 1.5rem 1rem; /* More vertical padding */
+        }
+
+        .combo-body h5 {
+            font-weight: 700; /* Even bolder font for titles */
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .combo-footer {
             display: flex;
             justify-content: space-between;
-            gap: 10px;
-            margin-top: 50px;
-         }
+            align-items: center;
+            padding: 0 1.5rem 1.5rem; /* Match body padding */
+            font-size: 16px; /* Slightly larger font */
+            color: #555;
+        }
 
-         .nav-box .box {
-            background-color: #4843a3; /* Matching blue to background */
+        .add-btn {
+            border: none;
+            background-color: #7087ea; /* Initial button color */
             color: white;
-            padding: 15px 30px;
-            border-radius: 5px;
+            font-weight: 600; /* Bolder text */
+            border-radius: 10px; /* More rounded corners */
+            padding: 12px 20px; /* More padding */
+            width: 95%; /* Wider button */
+            margin: 0 auto 1.5rem; /* Centered with more bottom margin */
+            display: block;
+            transition: none; /* Explicitly remove transition */
+        }
+
+        .add-btn:hover {
+            background-color: #7087ea; /* Keep it the same as default on hover */
+            transform: none; /* Remove any lift on hover */
+            cursor: pointer; /* Ensure it still looks clickable */
+        }
+
+        /* Small adjustments for responsiveness */
+        @media (max-width: 576px) {
+            .header .navbar-nav {
+                flex-direction: column; /* Stack nav items vertically on small screens */
+            }
+
+            .navbar-nav .nav-item {
+                margin: 5px 0;
+            }
+        }
+
+        /* Flash messages styling */
+        .flashes {
+            list-style-type: none;
+            padding: 10px;
+            margin: 20px auto;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
             text-align: center;
-            flex-grow: 1;
-            font-size: 16px;
-         }
-
-         .nav-box .box a {
-            color: white;
-            text-decoration: none;
-            font-size: 16px;
-         }
-
-         .nav-box .box:hover {
-            background-color: #7087ea; /* Darker blue on hover */
-         }
-      </style>
-   </head>
-   <!-- body -->
-   <body class="main-layout inner_posituong">
-      <!-- header -->
-      <header>
-         <div class="header">
+        }
+        .flashes li {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .flashes .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .flashes .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .flashes .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .flashes .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+    </style>
+</head>
+<body class="main-layout inner_posituong">
+    <header>
+        <div class="header">
             <div class="container-fluid">
-               <div class="row align-items-center justify-content-center">
-                  <div class="col-xl-9 col-lg-9 col-md-9 col-sm-9">
-                     <nav class="navigation navbar navbar-expand-md navbar-dark ">
-                        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExample04" aria-controls="navbarsExample04" aria-expanded="false" aria-label="Toggle navigation">
-                           <span class="navbar-toggler-icon"></span>
-                        </button>
-                        <div class="collapse navbar-collapse" id="navbarsExample04">
-                           <ul class="navbar-nav mr-auto">
-                              <li class="nav-item active">
-                                 <a class="nav-link" href="{{ url_for('home') }}">Home</a>
-                              </li>
-                              <li class="nav-item">
-                                 <a class="nav-link" href="{{ url_for('about') }}">About</a>
-                              </li>
-                              <li class="nav-item">
-                                 <a class="nav-link" href="{{ url_for('product') }}">Products</a>
-                              </li>
-                              <li class="nav-item">
-                                 <a class="nav-link" href="{{ url_for('contact') }}">Contact Us</a>
-                              </li>
-                              <li class="nav-item d_none">
-                                <a class="nav-link" href="{{ url_for('search') }}"><i class="fa fa-search" aria-hidden="true"></i></a>
-                            </li>
-                              <li class="nav-item d_none">
-                              <a class="nav-link" href="#">Login</a>
-                              </li>
-                           </ul>
-                        </div>
-                     </nav>
-                  </div>
-               </div>
+                <div class="row align-items-center justify-content-center">
+                    <div class="col-12"> 
+                        <nav class="navigation navbar navbar-expand-md navbar-dark">
+                            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExample04" aria-controls="navbarsExample04" aria-expanded="false" aria-label="Toggle navigation">
+                                <span class="navbar-toggler-icon"></span>
+                            </button>
+                            <div class="collapse navbar-collapse" id="navbarsExample04">
+                                <ul class="navbar-nav">
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ url_for('home') }}">Home</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ url_for('about') }}">About</a>
+                                    </li>
+                                    <li class="nav-item active">
+                                        <a class="nav-link" href="{{ url_for('product') }}">Products</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ url_for('contact') }}">Contact Us</a>
+                                    </li>
+                                    <li class="nav-item d_none">
+                                        <a class="nav-link" href="{{ url_for('search') }}"><i class="fa fa-search" aria-hidden="true"></i></a>
+                                    </li>
+                                    
+                                    {# Conditional Rendering for Login/Profile #}
+                                    <li class="nav-item d_none">
+                                        {% if logged_in %}
+                                            <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
+                                        {% else %}
+                                            <a class="nav-link" href="{{ url_for('customerlogin') }}">Login</a>
+                                        {% endif %}
+                                    </li>
+                                    {# End Conditional Rendering #}
+
+                                </ul>
+                            </div>
+                        </nav>
+                    </div>
+                </div>
             </div>
-         </div>
-      </header>
+        </div>
+    </header>
 
-      <!-- ======= Navigation Options in Blue Boxes ======= -->
-      <div class="nav-box">
-         <div class="box">
-            <a href="{{ url_for('insert') }}">Insert</a>
-         </div>
-         <div class="box">
-            <a href="{{ url_for('update') }}">Update</a>
-         </div>
-         <div class="box">
-            <a href="{{ url_for('delete') }}">Delete</a>
-         </div>
-         <div class="box">
-            <a href="{{ url_for('search') }}">Search</a>
-         </div>
-         <div class="box">
-            <a href="{{ url_for('retrieve') }}">Retrieve</a>
-         </div>
-      </div>
-      <!-- End Navigation Options -->
 
-   </body>
+    <section class="combo-cards-section">
+        <div class="container py-5">
+            <h2 class="text-center mb-5">Our Products</h2> 
+            <div class="row g-4 justify-content-center">
+
+                {# Loop through products from the database #}
+                {% if products %}
+                    {% for product in products %}
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card combo-card position-relative">
+                                <div class="combo-header text-center"></div> 
+                                <img src="https://placehold.co/400x200/cccccc/333333?text={{ product.product_name | urlencode }}" class="card-img-top" alt="{{ product.product_name }}">
+                                <div class="combo-body text-center">
+                                    <p class="text-muted small mb-1">{{ product.category }}</p>
+                                    <h5 class="mb-2">{{ product.product_name }}</h5>
+                                    <h5 class="text-dark">${{ product.price }}</h5>
+                                </div>
+                                <div class="combo-footer">
+                                    <span>Available: <strong>{{ product.stock_quantity }}</strong></span>
+                                </div>
+                                
+                                {# Add to Cart Form #}
+                                <form action="{{ url_for('add_to_cart') }}" method="post">
+                                    <input type="hidden" name="product_id" value="{{ product.product_id }}">
+                                    <button type="submit" class="add-btn">Add to Cart</button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-center col-12">No products available at the moment.</p>
+                {% endif %}
+
+            </div>
+        </div>
+    </section>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
 </html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Customer Profile</title>
+    <style>
+        body {
+            color: #6F8BA4;
+            background-color: #f5f5f5;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .section {
+            padding: 20px 0;
+        }
+
+        .container {
+            width: 85%;
+            margin: auto;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .col-50 {
+            flex: 1 1 50%;
+            padding: 20px;
+        }
+
+        .about-text h3 {
+            font-size: 36px;
+            font-weight: 700;
+            color: #20247b;
+            margin-bottom: 15px;
+        }
+
+        .about-text p {
+            font-size: 18px;
+        }
+
+        .about-list .item {
+            margin-bottom: 10px;
+        }
+
+        .about-list label {
+            font-weight: bold;
+            color: #20247b;
+            display: inline-block;
+            width: 130px;
+        }
+
+        .counter {
+            margin-top: 50px;
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(31, 45, 61, 0.125);
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+
+        .count-data {
+            text-align: center;
+            flex: 1 1 200px;
+            margin: 10px;
+        }
+
+        .count-data h6 {
+            font-size: 28px;
+            color: #20247b;
+        }
+
+        .count-data p {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+<section class="section" id="about">
+    <div class="container">
+        <div class="row">
+            <div class="col-50">
+                <div class="about-text">
+                    <h3>{{ customer[1] }}</h3>
+                    <p>Welcome to your profile!</p>
+                    <div class="about-list">
+                        <div class="item"><label>Phone:</label> {{ customer[2] }}</div>
+                        <div class="item"><label>Email:</label> {{ customer[3] }}</div>
+                        <div class="item"><label>City:</label> {{ customer[4] }}</div>
+                        <div class="item"><label>Shipping Address:</label> {{ customer[5] }}</div>
+                        <div class="item"><label>Orders Made:</label> {{ customer[6] }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="counter">
+            <div class="count-data">
+                <h6>{{ total_customers }}</h6>
+                <p>Total Customers</p>
+            </div>
+            <div class="count-data">
+                <h6>{{ total_orders }}</h6>
+                <p>Total Orders</p>
+            </div>
+            <div class="count-data">
+                <h6>{{ customer[6] }}</h6>
+                <p>Your Orders</p>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>

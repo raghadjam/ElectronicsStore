@@ -1,9 +1,10 @@
 from datetime import date
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, flash, render_template, request, redirect, url_for, session
 import mysql
 from db import get_connection
 
 app = Flask(__name__)
+app.secret_key = '1220212'
 
 @app.route('/')
 def home():
@@ -98,6 +99,7 @@ def delete():
                 conn.rollback()
                 conn.close()
             # flash(f"Error: {err}")
+            
             return redirect(url_for('delete'))
 
     return render_template('delete.html')
@@ -132,92 +134,214 @@ def about():
 def contact():
     return render_template('contact.html')
 
-
-@app.route('/product')
-def product():
-    return render_template('product.html')
-
 @app.route('/login')
 def login():
     return render_template('login.html')
 
-@app.route('/customerlog')
-def customerlog():
-    return render_template('customerlog.html')
+
+@app.route('/product')
+def product():
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT product_id, product_name, category, price, stock_quantity FROM Product")
+    products = cursor.fetchall()
+    conn.close()
+    return render_template('product.html', products=products, logged_in='customer_id' in session)
 
 
-
-
-@app.route('/managerlog', methods=['GET', 'POST'])
-def managerlog():
+@app.route('/customerlogin', methods=['GET', 'POST'])
+def customerlogin():
     if request.method == 'POST':
-        manager_id = request.form['manager_id']
-        password = request.form['password']
+        customer_id = request.form['customer_id']
+        password = request.form['password'] 
 
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-
-        # Check if this ID belongs to a manager (someone who manages others)
-        query = """
-            SELECT * FROM Employee 
-            WHERE employee_id = %s AND employee_id IN (
-                SELECT DISTINCT manager_id FROM Employee WHERE manager_id IS NOT NULL
-            )
-        """
-        cursor.execute(query, (manager_id,))
-        manager = cursor.fetchone()
-        cursor.close()
+        cursor.execute("SELECT * FROM Customer WHERE customer_id = %s AND Customer_password = %s", (customer_id, password))
+        customer = cursor.fetchone()
         conn.close()
 
-        if manager:
-            if password == '1234':  
-                #session['user_id'] = manager['employee_id']
-                #session['role'] = 'manager'
-                #flash('Welcome, Manager!', 'success')
-                return render_template('manager.html')
-            else:
-                #flash('Incorrect password', 'danger')
-                return redirect(url_for('managerlog'))
+        if customer:
+            session['customer_id'] = customer_id # Store the customer_id in the session
+            flash("Logged in successfully!", "success")
+            return redirect(url_for('product')) # Redirect to home or a specific dashboard
         else:
-            #flash('Manager not found or not authorized', 'warning')
-            return redirect(url_for('managerlog'))
+            flash("Invalid ID or password", "error")
+            return render_template('customerlogin.html', error="Invalid ID or password", logged_in=False)
+            
+    return render_template('customerlogin.html', logged_in='customer_id' in session)
 
+
+@app.route('/profile')
+def profile():
+    # Check if customer_id is in session (i.e., user is logged in)
+    if 'customer_id' not in session:
+        flash("Please log in to view your profile.", "warning")
+        return redirect(url_for('customerlogin'))  # Redirect to login if not logged in
+
+    customer_id = session['customer_id']
+
+    # Connect to MySQL database
+    conn =get_connection()
+    cursor = conn.cursor()
+
+    # Get customer details
+    cursor.execute("SELECT * FROM Customer WHERE customer_id = %s", (customer_id,))
+    customer = cursor.fetchone()
+
+    # Get total number of customers
+    cursor.execute("SELECT COUNT(*) FROM Customer")
+    total_customers = cursor.fetchone()[0]
+
+    # Get total orders
+    cursor.execute("SELECT SUM(order_count) FROM Customer")
+    total_orders = cursor.fetchone()[0]
+
+    cursor.close()
+    conn.close()
+
+    if not customer:
+        # If customer not found in DB, logout and redirect
+        session.pop('customer_id', None)
+        flash("User not found. Please log in again.", "error")
+        return redirect(url_for('customerlogin'))
+
+    return render_template('profile.html',
+                           customer=customer,
+                           total_customers=total_customers,
+                           total_orders=total_orders)
+
+
+# --- NEW: Logout Route ---
+@app.route('/logout')
+def logout():
+    session.pop('customer_id', None) # Remove customer_id from session
+    flash("You have been logged out.", "info")
+    return redirect(url_for('home'))
+
+@app.route('/add_to_cart', methods=['POST'])
+def add_to_cart():
+    if 'customer_id' not in session:
+        flash("Please log in to add items to your cart.", "info")
+        return redirect(url_for('customerlogin'))
+
+    customer_id = session['customer_id']
+    product_id = request.form['product_id']
+    print(product_id)
+    quantity = 1 # Default quantity to 1 for each add to cart click
+
+    if not product_id:
+        flash("Invalid product selected.", "error")
+        return redirect(url_for('product'))
+
+    conn = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # 1. Get product price
+        cursor.execute("SELECT price, product_name FROM Product WHERE product_id = %s", (product_id,))
+        product_info = cursor.fetchone()
+        if not product_info:
+            flash("Product not found.", "error")
+            return redirect(url_for('product'))
+        
+        product_price = product_info['price']
+
+        # 2. Find or create a 'cart' order for the customer
+        cursor.execute("SELECT order_id FROM `Order` WHERE customer_id = %s AND status = 'cart'", (customer_id,))
+        current_cart_order = cursor.fetchone()
+        order_id = None
+
+        if current_cart_order:
+            order_id = current_cart_order['order_id']
+        else:
+            # Create a new 'cart' order
+            cursor.execute("INSERT INTO `Order` (customer_id, order_date, status) VALUES (%s, %s, %s)",
+                           (customer_id, date.today(), 'cart'))
+            conn.commit() # Commit to get the last inserted ID
+            order_id = cursor.lastrowid # Get the ID of the newly created order
+
+        # 3. Add product to OrderDetails (or update quantity if already exists)
+        cursor.execute("SELECT order_id, quantity FROM OrderDetails WHERE order_id = %s AND product_id = %s",
+                       (order_id, product_id))
+        existing_item = cursor.fetchone()
+
+        if existing_item:
+            # Item already in cart, update quantity
+            new_quantity = existing_item['quantity'] + quantity
+            cursor.execute("UPDATE OrderDetails SET quantity = %s WHERE order_id = %s",
+                           (new_quantity, existing_item['order_id']))
+            flash(f"Added another {product_info['product_name']} to cart!", "success")
+        else:
+            # Add new item to cart
+            cursor.execute("INSERT INTO OrderDetails (order_id, product_id, quantity, price) VALUES (%s, %s, %s, %s)",
+                           (order_id, product_id, quantity, product_price))
+            flash(f"{product_info['product_name']} added to cart!", "success")
+        
+        conn.commit()
+        return redirect(url_for('cart'))
+
+    except mysql.connector.Error as err:
+        print(f"MySQL Error: {err}")  
+
+        if conn:
+            conn.rollback()
+        return redirect(url_for('product'))
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/cart')
+def cart():
+    if 'customer_id' not in session:
+        flash("Please log in to view your cart.", "info")
+        return redirect(url_for('customerlogin'))
+
+    customer_id = session['customer_id']
+    conn = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT order_id FROM `Order` WHERE customer_id = %s AND status = 'cart'", (customer_id,))
+        current_cart_order = cursor.fetchone()
+
+        cart_items = []
+        total_price = 0.0
+
+        if current_cart_order:
+            order_id = current_cart_order['order_id']
+
+            cursor.execute("""
+                SELECT od.product_id, od.quantity, od.price_at_order, p.product_name
+                FROM OrderDetails od
+                JOIN Product p ON od.product_id = p.product_id
+                WHERE od.order_id = %s
+            """, (order_id,))
+
+            cart_items = cursor.fetchall()
+            total_price = sum(item['price_at_order'] * item['quantity'] for item in cart_items)
+
+        return render_template('cart.html', cart_items=cart_items, total_price=total_price)
+
+    except mysql.connector.Error as err:
+        print(f"MySQL Error: {err}")
+        flash("Could not load cart at this time.", "error")
+        return render_template('cart.html', cart_items=[], total_price=0)
+
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/managerlog')
+def managerlog():
     return render_template('managerlog.html')
 
-
-@app.route('/emplog', methods=['GET', 'POST'])
+@app.route('/emplog')
 def emplog():
-     if request.method == 'POST':
-        employee_id = request.form['employee_id']
-        password = request.form['password']
-        
-        conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        query = "SELECT * FROM Employee WHERE employee_id = %s"
-        cursor.execute(query, (employee_id,))
-        emp = cursor.fetchone()
-        print(emp)
-
-        cursor.close()
-        conn.close()
-
-        if emp:
-            if password == '1234':  
-                return render_template('emp.html')
-            else:
-                print("wrong pass")
-                return redirect(url_for('emplog'))  
-        else:
-            print("No such an employee")
-            return redirect(url_for('emplog'))
-
-     return render_template('emplog.html')
-
-
-@app.route('/saleslog')
-def saleslog():
-    return render_template('saleslog.html')
+    return render_template('emplog.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

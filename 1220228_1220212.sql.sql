@@ -10,6 +10,7 @@ CREATE TABLE Customer (
     city VARCHAR(50),
     shipping_address VARCHAR(200) NOT NULL,
     order_count INT DEFAULT 0 CHECK (order_count >= 0),
+    Customer_password VARCHAR(100) NOT NULL,
     is_valid BOOLEAN NOT NULL DEFAULT TRUE
 );
 
@@ -141,11 +142,11 @@ CREATE TABLE Payment (
     FOREIGN KEY (invoice_id) REFERENCES Invoice(invoice_id)
 );
 
-INSERT INTO Customer (customer_id, customer_name, phone_number, email_address, city, shipping_address, order_count) 
+INSERT INTO Customer (customer_id, customer_name, phone_number, email_address, city, shipping_address, order_count, Customer_password) 
 VALUES 
-(1, 'Alice Johnson', '555-1234', 'alice.johnson@email.com', 'New York', '123 Elm St, New York, NY', 5),
-(2, 'Bob Smith', '555-5678', 'bob.smith@email.com', 'Los Angeles', '456 Oak St, Los Angeles, CA', 3),
-(3, 'Charlie Brown', '555-8765', 'charlie.brown@email.com', 'Chicago', '789 Pine St, Chicago, IL', 7);
+(1, 'Alice Johnson', '555-1234', 'alice.johnson@email.com', 'New York', '123 Elm St, New York, NY', 5, '123'),
+(2, 'Bob Smith', '555-5678', 'bob.smith@email.com', 'Los Angeles', '456 Oak St, Los Angeles, CA', 3, '123'),
+(3, 'Charlie Brown', '555-8765', 'charlie.brown@email.com', 'Chicago', '789 Pine St, Chicago, IL', 7, '123');
 
 INSERT INTO Employee (employee_id, employee_name, emp_role, phone_number, email_address, hire_date, manager_id)
 VALUES
@@ -174,11 +175,11 @@ VALUES
 (1, 1, 2, 1599.97, '2024-04-01', '2024-04-05', '2024-04-04'),
 (2, 2, 3, 599.99, '2024-04-02', '2024-04-06', '2024-04-05');
 
-INSERT INTO OrderDetails (order_details_id, order_id, product_id, price, quantity)
+INSERT INTO OrderDetails ( order_id, product_id, price, quantity)
 VALUES
-(1, 1, 1, 999.99, 1),
-(2, 1, 3, 129.99, 2),
-(3, 2, 2, 599.99, 1);
+(1, 1, 999.99, 1),
+(1, 3, 129.99, 2),
+(2, 2, 599.99, 1);
 
 INSERT INTO Supplier (supplier_id, supplier_name, email_address, phone_number)
 VALUES
@@ -190,11 +191,11 @@ VALUES
 (1, 1, 1, 25000.00, '2024-03-15', '2024-03-25', '2024-03-24'),
 (2, 2, 2, 15000.00, '2024-03-18', '2024-03-28', '2024-03-27');
 
-INSERT INTO PurchaseOrderDetails (purchase_order_details_id, purchase_order_id, product_id, price, quantity)
+INSERT INTO PurchaseOrderDetails ( purchase_order_id, product_id, price, quantity)
 VALUES
-(1, 1, 1, 999.99, 20),
-(2, 1, 2, 599.99, 30),
-(3, 2, 3, 129.99, 50);
+( 1, 1, 999.99, 20),
+(1, 2, 599.99, 30),
+( 2, 3, 129.99, 50);
 
 INSERT INTO Invoice (invoice_id, order_id, invoice_date, total_amount)
 VALUES
