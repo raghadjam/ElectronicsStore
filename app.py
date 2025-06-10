@@ -148,7 +148,6 @@ def product():
     conn.close()
     return render_template('product.html', products=products, logged_in='customer_id' in session)
 
-
 @app.route('/customerlogin', methods=['GET', 'POST'])
 def customerlogin():
     if request.method == 'POST':
@@ -170,7 +169,6 @@ def customerlogin():
             return render_template('customerlogin.html', error="Invalid ID or password", logged_in=False)
             
     return render_template('customerlogin.html', logged_in='customer_id' in session)
-
 
 @app.route('/profile')
 def profile():
@@ -211,13 +209,139 @@ def profile():
                            total_customers=total_customers,
                            total_orders=total_orders)
 
-
-# --- NEW: Logout Route ---
 @app.route('/logout')
 def logout():
     session.pop('customer_id', None) # Remove customer_id from session
     flash("You have been logged out.", "info")
     return redirect(url_for('home'))
+
+@app.route('/checkout', methods=['GET', 'POST'])
+def checkout():
+    if 'customer_id' not in session:
+        flash("Please log in to continue with checkout.", "info")
+        return redirect(url_for('customerlogin'))
+
+    customer_id = session['customer_id']
+    conn = None
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get cart order
+        cursor.execute("SELECT order_id FROM `Order` WHERE customer_id = %s AND status = 'cart'", (customer_id,))
+        cart_order = cursor.fetchone()
+
+        if not cart_order:
+            flash("Your cart is empty.", "info")
+            return redirect(url_for('cart'))
+
+        order_id = cart_order['order_id']
+
+        # Fetch cart items
+        cursor.execute("""
+            SELECT od.product_id, od.quantity, od.price, p.product_name
+            FROM OrderDetails od
+            JOIN Product p ON od.product_id = p.product_id
+            WHERE od.order_id = %s AND od.is_valid = TRUE
+        """, (order_id,))
+        cart_items = cursor.fetchall()
+        total_price = sum(item['price'] * item['quantity'] for item in cart_items)
+
+        if request.method == 'POST':
+            name = request.form.get('name')
+            email = request.form.get('email')
+            payment_method = request.form.get('payment_method')
+            amount_paid = total_price
+
+            # Validate basic fields
+            if not all([name, email, payment_method]):
+                flash("Please fill in all required fields.", "error")
+                return redirect(url_for('checkout'))
+
+            if payment_method == 'card':
+                card_number = request.form.get('card_number')
+                expiry_date = request.form.get('expiry_date')
+                cvv = request.form.get('cvv')
+                if not all([card_number, expiry_date, cvv]):
+                    flash("Please complete all card details.", "error")
+                    return redirect(url_for('checkout'))
+
+
+            # Update order status
+            cursor.execute(
+                "UPDATE `Order` SET status = 'confirmed', order_date = %s WHERE order_id = %s",
+                (date.today(), order_id)
+            )
+
+            # Insert payment
+            cursor.execute("""
+                INSERT INTO Payment (invoice_id, payment_date, amount_paid, payment_method)
+                VALUES (%s, %s, %s, %s)
+            """, (order_id, date.today(), amount_paid, payment_method))
+
+            conn.commit()
+            flash("Payment successful and order confirmed!", "success")
+           
+
+        # GET request: render checkout page
+        return render_template('checkout.html', cart_items=cart_items, total_price=total_price)
+
+    except mysql.connector.Error as err:
+        print(f"MySQL Error: {err}")
+        flash("Checkout failed. Please try again.", "error")
+        if conn:
+            conn.rollback()
+        return redirect(url_for('cart'))
+
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/delete_from_cart/<int:product_id>', methods=['POST'])
+def delete_from_cart(product_id):
+    if 'customer_id' not in session:
+        flash("Please log in to modify your cart.", "info")
+        return redirect(url_for('customerlogin'))
+
+    customer_id = session['customer_id']
+    conn = None
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get current cart order
+        cursor.execute("SELECT order_id FROM `Order` WHERE customer_id = %s AND status = 'cart'", (customer_id,))
+        cart_order = cursor.fetchone()
+
+        if not cart_order:
+            flash("No cart found.", "error")
+            return redirect(url_for('cart'))
+
+        order_id = cart_order['order_id']
+
+        # Soft delete: set is_valid = FALSE in OrderDetails
+        cursor.execute("""
+            UPDATE OrderDetails 
+            SET is_valid = FALSE 
+            WHERE order_id = %s AND product_id = %s
+        """, (order_id, product_id))
+
+        conn.commit()
+        flash("Item removed from cart.", "success")
+        return redirect(url_for('cart'))
+
+    except mysql.connector.Error as err:
+        print(f"MySQL Error: {err}")
+        if conn:
+            conn.rollback()
+        flash("Could not remove item from cart.", "error")
+        return redirect(url_for('cart'))
+
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/add_to_cart', methods=['POST'])
 def add_to_cart():
@@ -252,6 +376,7 @@ def add_to_cart():
         cursor.execute("SELECT order_id FROM `Order` WHERE customer_id = %s AND status = 'cart'", (customer_id,))
         current_cart_order = cursor.fetchone()
         order_id = None
+        print(order_id)
 
         if current_cart_order:
             order_id = current_cart_order['order_id']
@@ -270,8 +395,8 @@ def add_to_cart():
         if existing_item:
             # Item already in cart, update quantity
             new_quantity = existing_item['quantity'] + quantity
-            cursor.execute("UPDATE OrderDetails SET quantity = %s WHERE order_id = %s",
-                           (new_quantity, existing_item['order_id']))
+            cursor.execute("UPDATE OrderDetails SET quantity = %s WHERE order_id = %s AND product_id = %s",
+                           (new_quantity, existing_item['order_id'], product_id))
             flash(f"Added another {product_info['product_name']} to cart!", "success")
         else:
             # Add new item to cart
@@ -314,14 +439,15 @@ def cart():
             order_id = current_cart_order['order_id']
 
             cursor.execute("""
-                SELECT od.product_id, od.quantity, od.price_at_order, p.product_name
+                SELECT od.product_id, od.quantity, od.price, p.product_name
                 FROM OrderDetails od
                 JOIN Product p ON od.product_id = p.product_id
-                WHERE od.order_id = %s
+                WHERE od.order_id = %s AND od.is_valid = TRUE
             """, (order_id,))
 
             cart_items = cursor.fetchall()
-            total_price = sum(item['price_at_order'] * item['quantity'] for item in cart_items)
+            print(cart_items)
+            total_price = sum(item['price'] * item['quantity'] for item in cart_items)
 
         return render_template('cart.html', cart_items=cart_items, total_price=total_price)
 

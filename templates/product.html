@@ -18,7 +18,7 @@
         /* Header Styling */
         .header {
             background-color: #4843a3; /* Dark blue background for the header */
-            padding: 15px 0;
+            padding: 30px 0;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
@@ -118,11 +118,13 @@
             border-bottom: 1px solid #e0e0e0;
         }
 
-        .combo-card img {
-            width: 100%; /* Ensure image fills its container */
-            height: 200px; /* Fixed height for consistent image size */
-            object-fit: cover; /* Cover the area without distortion */
-        }
+       .combo-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: contain;
+    background-color: #f8f9fa;
+}
+
 
         .combo-body {
             padding: 1.5rem 1rem; /* More vertical padding */
@@ -236,6 +238,9 @@
                                     <li class="nav-item d_none">
                                         <a class="nav-link" href="{{ url_for('search') }}"><i class="fa fa-search" aria-hidden="true"></i></a>
                                     </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ url_for('cart') }}"><i class="fa fa-shopping-cart" aria-hidden="true"></i> Cart</a>
+                                    </li>
                                     
                                     {# Conditional Rendering for Login/Profile #}
                                     <li class="nav-item d_none">
@@ -259,7 +264,6 @@
 
     <section class="combo-cards-section">
         <div class="container py-5">
-            <h2 class="text-center mb-5">Our Products</h2> 
             <div class="row g-4 justify-content-center">
 
                 {# Loop through products from the database #}
@@ -268,7 +272,7 @@
                         <div class="col-md-6 col-lg-4">
                             <div class="card combo-card position-relative">
                                 <div class="combo-header text-center"></div> 
-                                <img src="https://placehold.co/400x200/cccccc/333333?text={{ product.product_name | urlencode }}" class="card-img-top" alt="{{ product.product_name }}">
+                                <img src="{{ url_for('static', filename='images/' + product.product_name + '.png') }}" alt="{{ product.product_name }}">
                                 <div class="combo-body text-center">
                                     <p class="text-muted small mb-1">{{ product.category }}</p>
                                     <h5 class="mb-2">{{ product.product_name }}</h5>
