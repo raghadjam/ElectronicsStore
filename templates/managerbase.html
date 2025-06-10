@@ -561,13 +561,13 @@
                             <span class="nav-link-text">Customers</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a href="{{ url_for('m_employees', employee_id=employee.employee_id) }}"
-                            class="nav-link {% if request.endpoint == 'm_employees' %}active{% endif %}">
+                    <!--<li class="nav-item">
+                        <a href="{{ url_for('m_employees', employee_id=employee.employee_id, Mprofile=True) }}"
+                            class="nav-link {% if request.endpoint == 'emp' %}active{% endif %}">
                             <i class="fas fa-users-cog"></i>
                             <span class="nav-link-text">Employees</span>
                         </a>
-                    </li>
+                    </li>-->
                     <li class="nav-item">
                         <a href="{{ url_for('m_suppliers', employee_id=employee.employee_id, Mprofile=True) }}"
                             class="nav-link {% if request.endpoint == 'emp' and request.args.get('Mprofile') %}active{% endif %}">

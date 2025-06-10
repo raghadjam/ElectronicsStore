@@ -169,32 +169,106 @@
 
     document.addEventListener("DOMContentLoaded", function () {
         fetchOrders();
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('orderDate').value = today;
         fetchProducts();
-        document.getElementById('purchaseOrderForm').addEventListener('submit', submitOrder);
+        const today = new Date().toISOString().split('T')[0];
+
+        // Set order date only if element exists
+        const orderDateElement = document.getElementById('orderDate');
+        if (orderDateElement) {
+            orderDateElement.value = today;
+        }
+
+        // FIXED: Only attach one event listener to the correct form
+        const purchaseOrderForm = document.getElementById('purchaseOrderForm');
+        if (purchaseOrderForm) {
+            purchaseOrderForm.addEventListener('submit', submitOrder);
+        }
     });
 
     function fetchProducts() {
+        console.log('Fetching products...'); // Debug log
         fetch('/api/products')
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status); // Debug log
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('Products received:', data); // Debug log
                 products = data;
                 populateProductDropdown();
             })
-            .catch(error => console.error('Error fetching products:', error));
+            .catch(error => {
+                console.error('Error fetching products:', error);
+                // Show user-friendly error message
+                const select = document.getElementById('productSelect');
+                if (select) {
+                    select.innerHTML = '<option value="">Error loading products</option>';
+                }
+            });
     }
 
     function populateProductDropdown() {
         const select = document.getElementById('productSelect');
+
+        // Check if the select element exists
+        if (!select) {
+            console.error('Product select element not found');
+            return;
+        }
+
+        // Clear existing options
         select.innerHTML = '<option value="">Select a product</option>';
 
-        products.forEach(product => {
+        // Check if products array exists and has items
+        if (!products || !Array.isArray(products) || products.length === 0) {
+            console.log('No products available or products is not an array:', products);
+            select.innerHTML = '<option value="">No products available</option>';
+            return;
+        }
+
+        console.log('Populating dropdown with', products.length, 'products'); // Debug log
+
+        // Populate dropdown with products
+        products.forEach((product, index) => {
+            console.log(`Adding product ${index}:`, product); // Debug log
+
+            // Validate product object has required properties
+            if (!product.product_id) {
+                console.warn('Product missing product_id:', product);
+                return;
+            }
+
             const option = document.createElement('option');
             option.value = product.product_id;
-            option.textContent = `${product.product_name} - $${product.price.toFixed(2)}`;
+
+            // Handle missing product_name or price gracefully
+            const productName = product.product_name || 'Unknown Product';
+            const productPrice = product.price !== undefined ? product.price : 0;
+
+            option.textContent = `${productName} - $${parseFloat(productPrice).toFixed(2)}`;
             select.appendChild(option);
         });
+
+        console.log('Dropdown populated successfully');
+    }
+
+    function showOrderCreateBox() {
+        selectedProducts = []; // Reset selected products
+        document.getElementById('createOrderBox').style.display = 'block';
+        document.getElementById('selectedProducts').innerHTML = '<p class="text-muted">No products selected yet</p>';
+        document.getElementById('totalPrice').value = '0.00';
+
+        // Ensure products are fetched and dropdown is populated
+        if (!products || products.length === 0) {
+            console.log('Products not loaded, fetching...');
+            fetchProducts();
+        } else {
+            console.log('Products already loaded, repopulating dropdown...');
+            populateProductDropdown();
+        }
     }
 
     function addProduct() {
@@ -207,7 +281,10 @@
         }
 
         const product = products.find(p => p.product_id === productId);
-        if (!product) return;
+        if (!product) {
+            alert('Selected product not found');
+            return;
+        }
 
         // Check if product already exists in selection
         const existingIndex = selectedProducts.findIndex(p => p.product_id === productId);
@@ -266,11 +343,15 @@
 
     function calculateTotalPrice() {
         const total = selectedProducts.reduce((sum, product) => sum + (product.price * product.quantity), 0);
-        document.getElementById('totalPrice').value = total.toFixed(2);
+        const totalPriceElement = document.getElementById('totalPrice');
+        if (totalPriceElement) {
+            totalPriceElement.value = total.toFixed(2);
+        }
     }
 
     function submitOrder(event) {
         event.preventDefault();
+        console.log('submitOrder called'); // Debug log
 
         if (selectedProducts.length === 0) {
             alert('Please add at least one product to the order');
@@ -288,6 +369,8 @@
             }))
         };
 
+        console.log('Submitting order data:', orderData); // Debug log
+
         fetch('/api/purchase_orders', {
             method: 'POST',
             headers: {
@@ -300,6 +383,8 @@
                 if (data.message) {
                     alert(data.message);
                     clearForm();
+                    fetchOrders(); // Refresh the orders table
+                    document.getElementById('createOrderBox').style.display = 'none';
                 } else {
                     alert(data.error || 'Failed to create purchase order');
                 }
@@ -314,11 +399,24 @@
         selectedProducts = [];
         updateSelectedProductsDisplay();
         calculateTotalPrice();
-        document.getElementById('purchaseOrderForm').reset();
-        document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
+        const form = document.getElementById('purchaseOrderForm');
+        if (form) {
+            form.reset();
+        }
+        const today = new Date().toISOString().split('T')[0];
+        const orderDateElement = document.getElementById('orderDate');
+        if (orderDateElement) {
+            orderDateElement.value = today;
+        }
+
+        // Hide the create order box
+        document.getElementById('createOrderBox').style.display = 'none';
     }
 
-    ////////////////////
+    function cancelCreate() {
+        clearForm();
+    }
+
     function fetchOrders() {
         fetch('/api/purchase_orders')
             .then(response => response.json())
@@ -328,7 +426,6 @@
 
                 if (data.error) {
                     console.error(data.error);
-                    // Show error message to user
                     tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error: ${data.error}</td></tr>`;
                     return;
                 }
@@ -369,85 +466,23 @@
         fetch(`/api/purchase_orders/${purchaseOrderId}/products`)
             .then(response => response.json())
             .then(products => {
-                let html = '<h5>Ordered Products</h5><table class="table table-sm"><thead><tr><th>Product</th><th>Price</th><th>Quantity</th><th>Subtotal</th></tr></thead><tbody>';
+                let html = 'Ordered Products:\n\n';
+                let total = 0;
 
                 products.forEach(product => {
-                    html += `
-                        <tr>
-                            <td>${product.product_name}</td>
-                            <td>$${product.price.toFixed(2)}</td>
-                            <td>${product.quantity}</td>
-                            <td>$${(product.price * product.quantity).toFixed(2)}</td>
-                        </tr>
-                    `;
+                    const subtotal = product.price * product.quantity;
+                    total += subtotal;
+                    html += `${product.product_name} - $${product.price.toFixed(2)} x ${product.quantity} = $${subtotal.toFixed(2)}\n`;
                 });
 
-                html += '</tbody></table>';
-                alert(html.replace(/<[^>]*>/g, '')); // Simple text alert
-                // For a better UI, you might want to use a modal instead
-            })
-            .catch(error => console.error('Error fetching order details:', error));
-    }
-
-    function showOrderCreateBox() {
-        selectedProducts = []; // Reset selected products
-        document.getElementById('createOrderBox').style.display = 'block';
-        document.getElementById('selectedProducts').innerHTML = '<p>No products selected yet</p>';
-        document.getElementById('totalPrice').value = '0.00';
-    }
-
-    function cancelCreate() {
-        document.getElementById('createOrderBox').style.display = 'none';
-        document.getElementById('createOrderForm').reset();
-        selectedProducts = [];
-    }
-
-    // Function to handle form submission for creating a new order
-    document.getElementById('createOrderForm').addEventListener('submit', function (event) {
-        event.preventDefault();
-
-        if (selectedProducts.length === 0) {
-            alert('Please add at least one product to the order');
-            return;
-        }
-
-        const formData = {
-            supplier_id: document.getElementById('supplierId').value,
-            employee_id: document.getElementById('employeeId').value,
-            total_price: document.getElementById('totalPrice').value,
-            order_date: document.getElementById('orderDate').value,
-            expected_received_date: document.getElementById('expectedDate').value,
-            products: selectedProducts.map(p => ({
-                product_id: p.product_id,
-                quantity: p.quantity,
-                price: p.price
-            }))
-        };
-
-        fetch('/api/purchase_orders', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message) {
-                    alert(data.message);
-                    fetchOrders();
-                    document.getElementById('createOrderBox').style.display = 'none';
-                    document.getElementById('createOrderForm').reset();
-                    selectedProducts = [];
-                } else {
-                    alert(data.error || 'Failed to create purchase order');
-                }
+                html += `\nTotal: $${total.toFixed(2)}`;
+                alert(html);
             })
             .catch(error => {
-                console.error('Error creating purchase order:', error);
-                alert('An error occurred while creating purchase order.');
+                console.error('Error fetching order details:', error);
+                alert('Failed to load order details');
             });
-    });
+    }
 
     function deleteOrder(purchaseOrderId) {
         if (confirm('Are you sure you want to delete this purchase order?')) {
@@ -476,10 +511,6 @@
                 document.getElementById('editPurchaseOrderId').value = order.purchase_order_id;
                 document.getElementById('editSupplierId').value = order.supplier_id;
                 document.getElementById('editEmployeeId').value = order.employee_id;
-                document.getElementById('editTotalPrice').value = order.total_price;
-                document.getElementById('editOrderDate').value = order.order_date;
-                document.getElementById('editExpectedDate').value = order.expected_received_date;
-                document.getElementById('editActualDate').value = order.actual_received_date || '';
 
                 // Load products for this order
                 return fetch(`/api/purchase_orders/${purchaseOrderId}/products`);
@@ -532,44 +563,42 @@
         editSelectedProducts = [];
     }
 
-    // Function to handle form submission for editing an order
-    document.getElementById('editOrderForm').addEventListener('submit', function (event) {
-        event.preventDefault();
+    // Edit form submission
+    const editOrderForm = document.getElementById('editOrderForm');
+    if (editOrderForm) {
+        editOrderForm.addEventListener('submit', function (event) {
+            event.preventDefault();
 
-        const purchaseOrderId = document.getElementById('editPurchaseOrderId').value;
-        const formData = {
-            employee_id: document.getElementById('editEmployeeId').value,
-            supplier_id: document.getElementById('editSupplierId').value,
-            total_price: document.getElementById('editTotalPrice').value,
-            order_date: document.getElementById('editOrderDate').value,
-            expected_received_date: document.getElementById('editExpectedDate').value,
-            actual_received_date: document.getElementById('editActualDate').value || null
-        };
+            const purchaseOrderId = document.getElementById('editPurchaseOrderId').value;
+            const formData = {
+                employee_id: document.getElementById('editEmployeeId').value,
+                supplier_id: document.getElementById('editSupplierId').value
+            };
 
-        fetch(`/api/purchase_orders/${purchaseOrderId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message) {
-                    alert(data.message);
-                    fetchOrders();
-                    document.getElementById('editOrderBox').style.display = 'none';
-                } else {
-                    alert(data.error || 'Failed to update purchase order');
-                }
+            fetch(`/api/purchase_orders/${purchaseOrderId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
             })
-            .catch(error => {
-                console.error('Error updating purchase order:', error);
-                alert('An error occurred while updating purchase order.');
-            });
-    });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        alert(data.message);
+                        fetchOrders();
+                        document.getElementById('editOrderBox').style.display = 'none';
+                    } else {
+                        alert(data.error || 'Failed to update purchase order');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating purchase order:', error);
+                    alert('An error occurred while updating purchase order.');
+                });
+        });
+    }
 
-    // Search orders function
     function searchOrders() {
         const attribute = document.getElementById('searchAttribute').value;
         const value = document.getElementById('searchValue').value;

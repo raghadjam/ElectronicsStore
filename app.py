@@ -553,7 +553,7 @@ def m_employees():
     
     conn.close()
     
-    return render_template('m_employees.html', managers=managers, now=datetime.now)
+    return render_template('m_employees.html')
 
 @app.route('/api/manager/employees', methods=['POST'])
 def create_employee():
@@ -2384,7 +2384,6 @@ def e_products(employee_id):
     conn.close()
     
     return render_template('e_products.html', employee=employee, products=products)
-
 
 @app.route('/e_reports/<int:employee_id>')
 def e_reports(employee_id):
