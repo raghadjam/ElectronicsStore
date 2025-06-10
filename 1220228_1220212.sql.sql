@@ -313,36 +313,8 @@ VALUES
 (5, 9, 5, '2024-03-25', '2024-04-05', NULL, 'Pending'),
 (6, 6, 6, '2024-03-28', '2024-04-08', NULL, 'Pending');
 
-INSERT INTO PurchaseOrderDetails (purchase_order_id, product_id, price, quantity)
+INSERT INTO Product (product_id, product_name, category, price, stock_quantity, stock_arrival_date)
 VALUES
--- Purchase Order 3
-(3, 5, 349.99, 30),
-(3, 11, 89.99, 40),
-(3, 13, 159.99, 25),
--- Purchase Order 4
-(4, 8, 299.99, 20),
-(4, 7, 79.99, 60),
-(4, 16, 129.99, 35),
--- Purchase Order 5
-(5, 10, 19.99, 100),
-(5, 12, 49.99, 80),
-(5, 14, 24.99, 150),
--- Purchase Order 6
-(6, 15, 39.99, 50),
-(6, 6, 199.99, 20); 
+(9, 'mic', 'Electronics', 99.99, 50, '2024-03-15'),
+(6, 'mouse', 'Accessories', 199.99, 150, '2024-02-10');
 
-INSERT INTO Invoice (invoice_id, order_id, invoice_date)
-VALUES
-(3, 3, '2024-04-06'),
-(4, 4, '2024-04-04'),
-(5, 5, '2024-04-05'),
-(6, 6, '2024-04-06'),
-(7, 7, '2024-04-07');
-
-INSERT INTO Payment (payment_id, invoice_id, payment_date, amount_paid, payment_method)
-VALUES
-(3, 3, '2024-04-06', 449.98, 'Debit Card'),
-(4, 4, '2024-04-04', 729.97, 'Credit Card'),
-(5, 5, '2024-04-05', 179.98, 'PayPal'),
-(6, 6, '2024-04-06', 299.98, 'Credit Card'), -- Partial payment
-(7, 7, '2024-04-07', 889.95, 'Bank Transfer');
