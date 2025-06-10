@@ -93,7 +93,6 @@
                         <th>Manager Name</th>
                         <th>Employee Name</th>
                         <th>Role</th>
-                        <th>Hire Date</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -102,7 +101,6 @@
                         <td>{{ row.manager_name }}</td>
                         <td>{{ row.employee_name }}</td>
                         <td>{{ row.emp_role }}</td>
-                        <td>{{ row.hire_date }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -141,7 +139,6 @@
     </div>
 
 
-    <!-- Advanced Query: Purchase Orders by Supplier -->
     <div class="recent--customers">
         <h2 class="section--title">Purchase Orders by Supplier</h2>
         <div class="table-responsive">
@@ -176,17 +173,41 @@
         </div>
     </div>
 
-    <!-- Optional: Salary Overview -->
     <div class="recent--customers">
-        <h2 class="section--title">Salary Overview</h2>
+        <h2 class="section--title">Top Selling Product</h2>
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
-                        <th>Employee</th>
+                        <th>Product Name</th>
+                        <th>Total Quantity Sold</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if top_product %}
+                    <tr>
+                        <td>{{ top_product.product_name }}</td>
+                        <td>{{ top_product.total_quantity_sold }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="2">No data found.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="recent--customers">
+        <h2 class="section--title">Employee Salary Data</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee Name</th>
                         <th>Type</th>
-                        <th>Salary / Hourly Rate</th>
-                        <th>Total Pay (If Hourly)</th>
+                        <th>Salary/Wage</th>
+                        <th>Total Pay</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -195,12 +216,70 @@
                         <td>{{ emp.employee_name }}</td>
                         <td>{{ emp.type }}</td>
                         <td>{{ emp.salary_or_wage }}</td>
-                        <td>{{ emp.total_pay if emp.type == 'Hourly' else '—' }}</td>
+                        <td>{{ emp.total_wage if emp.total_wage else 'N/A' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4">No salary data found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+
+    <!--<div class="recent--customers">
+        <h2 class="section--title">Lowest Unit Price Product</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if lowest_price_product %}
+                    <tr>
+                        <td>{{ lowest_price_product.product_name }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td>No data found.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="recent--customers">
+        <h2 class="section--title">Customer Spending Summary</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Customer ID</th>
+                        <th>Name</th>
+                        <th>Total Orders</th>
+                        <th>Total Spent ($)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in customer_spending %}
+                    <tr>
+                        <td>{{ row.customer_id }}</td>
+                        <td>{{ row.customer_name }}</td>
+                        <td>{{ row.total_orders }}</td>
+                        <td>{{ row.total_amount_spent }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4">No data found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div> -->
+
 </div>
 {% endblock %}

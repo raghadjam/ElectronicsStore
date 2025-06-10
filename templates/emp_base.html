@@ -17,6 +17,10 @@
             --primary-color: #4843a3;
             --secondary-color: #6c757d;
             --accent-color: #ff6b6b;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --danger-color: #dc3545;
         }
 
         body {
@@ -178,11 +182,12 @@
             overflow-x: auto;
         }
 
-        .table th {
-            font-weight: 600;
-            color: var(--secondary-color);
-            border-top: none;
+        .table-responsive table td,
+        .table-responsive table th {
+            min-width: 90px;
+            padding: 10px;
         }
+
 
         .action-btn {
             padding: 5px 10px;
@@ -196,6 +201,202 @@
             height: 40px;
             border-radius: 50%;
             object-fit: cover;
+        }
+
+        /* Report Page Styles */
+        .main--content {
+            padding: 20px;
+        }
+
+        .overview {
+            margin-bottom: 30px;
+        }
+
+        .section--title {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card.card-1,
+        .card.card-2,
+        .card.card-3,
+        .card.card-4 {
+            width: calc(25% - 15px);
+            min-width: 200px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+
+
+
+        .card.card-5,
+        .card.card-6,
+        .card.card-7,
+        .card.card-8 {
+            flex: 1;
+            min-width: 200px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .card.card-1:hover,
+        .card.card-2:hover,
+        .card.card-3:hover,
+        .card.card-4:hover,
+        .card.card-5:hover,
+        .card.card-6:hover,
+        .card.card-7:hover,
+        .card.card-8:hover {
+            transform: translateY(-5px);
+        }
+
+        .card.card-1 {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .card.card-2 {
+            border-left: 4px solid var(--success-color);
+        }
+
+        .card.card-3 {
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .card.card-4 {
+            border-left: 4px solid var(--info-color);
+        }
+
+        .card.card-5 {
+            border-left: 4px solid var(--danger-color);
+        }
+
+        .card.card-6 {
+            border-left: 4px solid var(--info-color);
+        }
+
+        .card.card-7 {
+            border-left: 4px solid var(--info-color);
+        }
+
+        .card-8 {
+            border-left: 4px solid var(--success-color);
+        }
+
+        .card-revenue .card--icon--lg {
+            color: var(--success-color);
+        }
+
+
+        .card--data {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card--content h5 {
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .card--content h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .card--icon--lg {
+            font-size: 2.5rem;
+            opacity: 0.7;
+        }
+
+        .card-1 .card--icon--lg {
+            color: var(--primary-color);
+        }
+
+        .card-2 .card--icon--lg {
+            color: var(--success-color);
+        }
+
+        .card-3 .card--icon--lg {
+            color: var(--warning-color);
+        }
+
+        .card-4 .card--icon--lg {
+            color: var(--info-color);
+        }
+
+        .card-5 .card--icon--lg {
+            color: var(--danger-color);
+        }
+
+        .recent--customers,
+        .transaction--per--month,
+        .sales--by--salesperson,
+        .profit--by--salesperson,
+        .best--seller--cars {
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .table {
+            overflow-x: auto;
+        }
+
+        .table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .error-message {
+            color: var(--danger-color);
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--secondary-color);
         }
 
         /* Profile Page Styles */
@@ -291,6 +492,11 @@
         @media (max-width: 768px) {
             .sidebar {
                 width: 80px;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
             }
 
             .sidebar .nav-link-text {
@@ -302,11 +508,23 @@
             }
 
             .main-content {
-                margin-left: 80px;
+                margin-left: 0;
             }
 
             .info-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .cards {
+                flex-direction: column;
+            }
+
+            .card.card-1,
+            .card.card-2,
+            .card.card-3,
+            .card.card-4,
+            .card.card-5 {
+                min-width: 100%;
             }
         }
     </style>
@@ -330,8 +548,8 @@
                 <!-- Navigation -->
                 <ul class="nav flex-column flex-grow-1">
                     <li class="nav-item">
-                        <a href="{{ url_for('emp', employee_id=employee.employee_id, profile=True) }}"
-                            class="nav-link {% if request.endpoint == 'emp' and request.args.get('profile') %}active{% endif %}">
+                        <a href="{{ url_for('emp', employee_id=employee.employee_id, Eprofile=True) }}"
+                            class="nav-link {% if request.endpoint == 'emp' and request.args.get('Eprofile') %}active{% endif %}">
                             <i class="fas fa-user"></i>
                             <span class="nav-link-text">My Profile</span>
                         </a>
@@ -350,12 +568,7 @@
                             <span class="nav-link-text">Purchase Orders</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <i class="fas fa-truck"></i>
-                            <span class="nav-link-text">Suppliers</span>
-                        </a>
-                    </li>
+
                     <li class="nav-item">
                         <a href="{{ url_for('e_products', employee_id=employee.employee_id) }}"
                             class="nav-link {% if request.endpoint == 'e_products' %}active{% endif %}">
@@ -363,15 +576,9 @@
                             <span class="nav-link-text">Products</span>
                         </a>
                     </li>
-                    <!-- <li class="nav-item">
-                        <a href="{{ url_for('e_invoices', employee_id=employee.employee_id) }}"
-                            class="nav-link {% if request.endpoint == 'e_invoices' %}active{% endif %}">
-                            <i class="fas fa-file-invoice"></i>
-                            <span class="nav-link-text">Invoices</span>
-                        </a>
-                    </li>-->
+
                     <li class="nav-item">
-                        <a href="{{ url_for('top_emp') }}"
+                        <a href="{{ url_for('e_reports', employee_id=employee.employee_id) }}"
                             class="nav-link {% if request.endpoint == 'e_reports' %}active{% endif %}">
                             <i class="fas fa-chart-line"></i>
                             <span class="nav-link-text">Reports</span>
@@ -395,20 +602,6 @@
                         </h5>
                     </div>
 
-                    <div class="d-flex align-items-center">
-                        <div class="dropdown">
-                            <button class="btn btn-light dropdown-toggle" type="button" id="userDropdown"
-                                data-bs-toggle="dropdown">
-                                <i class="fas fa-user-circle me-1"></i>
-                                {{ employee.employee_name }}
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item"
-                                        href="{{ url_for('emp', employee_id=employee.employee_id, profile=True) }}">Profile</a>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
                 </div>
             </nav>
 

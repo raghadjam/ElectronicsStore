@@ -596,13 +596,7 @@
                             <span class="nav-link-text">Products</span>
                         </a>
                     </li>
-                    <!--<li class="nav-item">
-                        <a href="{{ url_for('e_invoices', employee_id=employee.employee_id) }}"
-                            class="nav-link {% if request.endpoint == 'e_invoices' %}active{% endif %}">
-                            <i class="fas fa-file-invoice"></i>
-                            <span class="nav-link-text">Invoices</span>
-                        </a>
-                    </li>-->
+
                     <li class="nav-item">
                         <a href="{{ url_for('m_report') }}"
                             class="nav-link {% if request.endpoint == 'm_report' %}active{% endif %}">
@@ -629,20 +623,6 @@
                         </h5>
                     </div>
 
-                    <div class="d-flex align-items-center">
-                        <div class="dropdown">
-                            <button class="btn btn-light dropdown-toggle" type="button" id="userDropdown"
-                                data-bs-toggle="dropdown">
-                                <i class="fas fa-user-circle me-1"></i>
-                                {{ employee.employee_name }}
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item"
-                                        href="{{ url_for('emp', employee_id=employee.employee_id, Mprofile=True) }}">Profile</a>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
                 </div>
             </nav>
 

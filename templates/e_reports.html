@@ -1,0 +1,234 @@
+{% extends "emp_base.html" %}
+
+{% block content %}
+<div class="main--content">
+    <h2 class="section--title">Employee Report: {{ employee.employee_name }}</h2>
+
+    <!-- Employee Info -->
+    <div class="card">
+        <div class="card--data">
+            <div class="card--content">
+                <p><strong>Role:</strong> {{ employee.emp_role }}</p>
+                <p><strong>Email:</strong> {{ employee.email_address }}</p>
+                <p><strong>Phone:</strong> {{ employee.phone_number }}</p>
+                <p><strong>Hire Date:</strong> {{ employee.hire_date }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="cards">
+        <div class="card card-1">
+            <div class="card--data">
+                <div class="card--content">
+                    <h5>Total Orders Handled</h5>
+                    <h1>{{ total_orders_handled }}</h1>
+                </div>
+                <i class="fas fa-clipboard-list card--icon--lg"></i>
+            </div>
+        </div>
+
+        <div class="card card-2">
+            <div class="card--data">
+                <div class="card--content">
+                    <h5>Total Sales Value</h5>
+                    <h1>${{ total_sales_value }}</h1>
+                </div>
+                <i class="fas fa-dollar-sign card--icon--lg"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Handled Orders -->
+    <div class="recent--customers">
+        <h2 class="section--title">Handled Orders Details</h2>
+        {% if handled_orders %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Order Date</th>
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in handled_orders %}
+                    <tr>
+                        <td>{{ row.order_id }}</td>
+                        <td>{{ row.order_date }}</td>
+                        <td>{{ row.product_name }}</td>
+                        <td>{{ row.quantity }}</td>
+                        <td>${{ row.price }}</td>
+                        <td>${{ row.total_value }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p>No handled orders found.</p>
+        {% endif %}
+    </div>
+
+    <!-- Purchase Orders -->
+    <div class="recent--customers">
+        <h2 class="section--title">Purchase Orders Made</h2>
+        {% if purchase_orders %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>PO ID</th>
+                        <th>Supplier</th>
+                        <th>Order Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for po in purchase_orders %}
+                    <tr>
+                        <td>{{ po.purchase_order_id }}</td>
+                        <td>{{ po.supplier_name }}</td>
+                        <td>{{ po.order_date }}</td>
+                        <td>
+                            <span class="order-status 
+                                {% if po.delivery_status == 'Pending' %}status-pending
+                                {% elif po.delivery_status == 'Shipped' %}status-processing
+                                {% else %}status-completed{% endif %}">
+                                {{ po.delivery_status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p>No purchase orders found.</p>
+        {% endif %}
+    </div>
+
+    <!-- Salary Information -->
+    <div class="recent--customers">
+        <h2 class="section--title">Salary Info</h2>
+        {% if salary_info %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Salary / Wage</th>
+                        <th>Hours Worked</th>
+                        <th>Total Pay</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ salary_info.type }}</td>
+                        <td>${{ salary_info.salary_or_wage }}</td>
+                        <td>
+                            {% if salary_info.hours_worked is not none %}
+                            {{ salary_info.hours_worked }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if salary_info.total_pay is not none %}
+                            ${{ salary_info.total_pay }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p>No salary data available.</p>
+        {% endif %}
+    </div>
+
+    <!-- Employees Who Handled Min Order Value -->
+    {% if employees %}
+    <div class="recent--customers">
+        <h2 class="section--title">Minimum Order Value Handlers</h2>
+        <p>Minimum order item value: <strong>${{ min_value }}</strong></p>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee Name</th>
+                        <th>Order ID</th>
+                        <th>Order Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in employees %}
+                    <tr>
+                        <td>{{ emp.employee_name }}</td>
+                        <td>{{ emp.order_id }}</td>
+                        <td>${{ emp.order_value }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <p>No data available for lowest order value.</p>
+    {% endif %}
+
+    <!-- Average Order Value per Employee -->
+    <div class="recent--customers">
+        <h2 class="section--title">Average Order Value per Employee</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee Name</th>
+                        <th>Avg Order Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in avg_order_values %}
+                    <tr>
+                        <td>{{ row.employee_name }}</td>
+                        <td>${{ row.avg_order_value | round(2) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <!-- Employees with Most Orders -->
+    <div class="recent--customers">
+        <h2 class="section--title">Top Employees by Order Count</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee Name</th>
+                        <th>Order Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for top in top_order_employees %}
+                    <tr>
+                        <td>{{ top.employee_name }}</td>
+                        <td>{{ top.order_count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

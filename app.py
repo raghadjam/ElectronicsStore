@@ -337,7 +337,7 @@ def cart():
             conn.close()
 
 
-
+######################## Manager ###################3
 @app.route('/managerlog', methods=['GET', 'POST'])
 def managerlog():
     if request.method == 'POST':
@@ -1161,7 +1161,6 @@ def deactivate_supplier(supplier_id):
             conn.close()
         return jsonify({'error': str(e)}), 500
 
-# Optional additional endpoints for full CRUD functionality
 @app.route('/api/manager/suppliers', methods=['POST'])
 def create_supplier():
     """Create a new supplier"""
@@ -1352,7 +1351,8 @@ def get_all_orders():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-        
+
+########## Purchase Orders in Manager base html  ###############      
 @app.route('/m_p_orders/<int:employee_id>')
 def m_p_orders(employee_id):
     conn = get_connection()
@@ -1363,12 +1363,375 @@ def m_p_orders(employee_id):
     conn.close()
     
     if not employee:
-        return redirect(url_for('emplog'))
+        return redirect(url_for('managerlog'))
     
     return render_template('m_p_orders.html', employee=employee)
 
-# Add these routes to your app.py file
+@app.route('/searchPurchaseOrders', methods=['POST'])
+def search_purchase_orders():
+    """Search purchase orders by attribute and value - restricted to specific attributes only"""
+    try:
+        data = request.get_json()
+        attribute = data.get('attribute')
+        value = data.get('value')
+        
+        if not attribute or not value:
+            return jsonify({'error': 'Attribute and value are required'}), 400
+        
+        # Restrict to only the four allowed search attributes from the dropdown
+        allowed_attributes = {
+            'purchase_order_id': 'po.purchase_order_id',
+            'supplier_id': 'po.supplier_id', 
+            'employee_id': 'po.employee_id',
+            'total_price': 'total_price'  # This is calculated, handled separately
+        }
+        
+        if attribute not in allowed_attributes:
+            return jsonify({'error': 'Invalid search attribute. Only Purchase Order ID, Supplier ID, Employee ID, and Total Price searches are allowed.'}), 400
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Handle total_price search differently since it's a calculated field
+        if attribute == 'total_price':
+            try:
+                # Convert value to float for price comparison
+                price_value = float(value)
+                query = """
+                    SELECT 
+                        po.purchase_order_id,
+                        po.supplier_id,
+                        po.employee_id,
+                        SUM(pod.price * pod.quantity) as total_price,
+                        DATE_FORMAT(po.order_date, '%Y-%m-%d') as order_date,
+                        DATE_FORMAT(po.expected_received_date, '%Y-%m-%d') as expected_received_date,
+                        DATE_FORMAT(po.actual_received_date, '%Y-%m-%d') as actual_received_date,
+                        po.delivery_status
+                    FROM purchaseorder po
+                    INNER JOIN purchaseorderdetails pod ON po.purchase_order_id = pod.purchase_order_id
+                    WHERE po.is_valid = 1 AND pod.is_valid = 1
+                    GROUP BY po.purchase_order_id, po.supplier_id, po.employee_id, 
+                             po.order_date, po.expected_received_date, po.actual_received_date, 
+                             po.delivery_status
+                    HAVING SUM(pod.price * pod.quantity) = %s
+                    ORDER BY po.order_date ASC
+                """
+                cursor.execute(query, (price_value,))
+            except ValueError:
+                return jsonify({'error': 'Invalid price value. Please enter a valid number.'}), 400
+        else:
+            # Handle other attributes (purchase_order_id, supplier_id, employee_id)
+            column = allowed_attributes[attribute]
+            query = f"""
+                SELECT 
+                    po.purchase_order_id,
+                    po.supplier_id,
+                    po.employee_id,
+                    SUM(pod.price * pod.quantity) as total_price,
+                    DATE_FORMAT(po.order_date, '%Y-%m-%d') as order_date,
+                    DATE_FORMAT(po.expected_received_date, '%Y-%m-%d') as expected_received_date,
+                    DATE_FORMAT(po.actual_received_date, '%Y-%m-%d') as actual_received_date,
+                    po.delivery_status
+                FROM purchaseorder po
+                INNER JOIN purchaseorderdetails pod ON po.purchase_order_id = pod.purchase_order_id
+                WHERE po.is_valid = 1 AND pod.is_valid = 1 AND {column} LIKE %s
+                GROUP BY po.purchase_order_id, po.supplier_id, po.employee_id, 
+                         po.order_date, po.expected_received_date, po.actual_received_date, 
+                         po.delivery_status
+                HAVING SUM(pod.price * pod.quantity) > 0
+                ORDER BY po.order_date ASC
+            """
+            cursor.execute(query, (f'%{value}%',))
+        
+        orders = cursor.fetchall()
+        conn.close()
+        
+        return jsonify({'purchase_orders': orders})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/api/purchase_orders', methods=['GET'])
+def get_purchase_orders():
+    """Get all purchase orders with computed total price"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT 
+                po.purchase_order_id, po.supplier_id, po.employee_id,
+                SUM(pod.price * pod.quantity) as total_price,
+                DATE_FORMAT(po.order_date, '%Y-%m-%d') as order_date,
+                DATE_FORMAT(po.expected_received_date, '%Y-%m-%d') as expected_received_date,
+                DATE_FORMAT(po.actual_received_date, '%Y-%m-%d') as actual_received_date,
+                po.delivery_status
+            FROM purchaseorder po, purchaseorderdetails pod  
+            WHERE po.is_valid = 1 AND pod.is_valid =  1 AND po.purchase_order_id = pod.purchase_order_id
+            GROUP BY po.purchase_order_id, po.supplier_id, po.employee_id, 
+                     po.order_date, po.expected_received_date, po.actual_received_date, 
+                     po.delivery_status
+            HAVING SUM(pod.price * pod.quantity) > 0
+            ORDER BY po.order_date ASC
+        """)
+        
+        orders = cursor.fetchall()
+        conn.close()
+        
+        return jsonify(orders)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
+@app.route('/api/products', methods=['GET'])
+def get_products():
+    """Get all valid products"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT product_id, product_name, price 
+            FROM Product 
+            WHERE is_valid = TRUE
+        """)
+        products = cursor.fetchall()
+        
+        conn.close()
+        return jsonify(products), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/purchase_orders', methods=['POST'])
+def create_purchase_order():
+    """Create a new purchase order with products"""
+    conn = None
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['supplier_id', 'employee_id', 'products']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'{field} is required'}), 400
+        
+        if not isinstance(data['products'], list) or len(data['products']) == 0:
+            return jsonify({'error': 'At least one product is required'}), 400
+        
+        # Calculate total price
+        total_price = sum(p['price'] * p['quantity'] for p in data['products'])
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Start transaction
+        conn.start_transaction()
+        
+        # Insert purchase order
+        cursor.execute("""
+            INSERT INTO PurchaseOrder (
+                employee_id,
+                supplier_id,
+                order_date,
+                expected_received_date,
+                delivery_status
+            ) VALUES (%s, %s, %s, %s, %s)
+        """, (
+            data['employee_id'],
+            data['supplier_id'],
+            datetime.now().date(),  # Current date as order date
+            data.get('expected_received_date'),
+            'Pending'
+        ))
+        
+        order_id = cursor.lastrowid
+        
+        # Insert products into PurchaseOrderDetails
+        for product in data['products']:
+            cursor.execute("""
+                INSERT INTO PurchaseOrderDetails (
+                    purchase_order_id,
+                    product_id,
+                    price,
+                    quantity
+                ) VALUES (%s, %s, %s, %s)
+            """, (
+                order_id,
+                product['product_id'],
+                product['price'],
+                product['quantity']
+            ))
+        
+        # Commit transaction
+        conn.commit()
+        
+        return jsonify({
+            'message': 'Purchase order created successfully',
+            'purchase_order_id': order_id,
+            'total_price': total_price
+        }), 201
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/purchase_orders/<int:order_id>', methods=['GET'])
+def get_purchase_order(order_id):
+    """Get a specific purchase order"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT 
+                po.purchase_order_id,
+                po.supplier_id,
+                po.employee_id,
+                po.total_price,
+                DATE_FORMAT(po.order_date, '%Y-%m-%d') as order_date,
+                DATE_FORMAT(po.expected_received_date, '%Y-%m-%d') as expected_received_date,
+                DATE_FORMAT(po.actual_received_date, '%Y-%m-%d') as actual_received_date
+            FROM PurchaseOrder po
+            WHERE po.purchase_order_id = %s
+        """, (order_id,))
+        
+        order = cursor.fetchone()
+        
+        if not order:
+            conn.close()
+            return jsonify({'error': 'Purchase order not found'}), 404
+        
+        conn.close()
+        return jsonify(order)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/purchase_orders/<int:order_id>/products', methods=['GET'])
+def get_purchase_order_products(order_id):
+    """Get products for a specific purchase order"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT 
+                pop.product_order_id,
+                pop.product_id,
+                p.product_name,
+                pop.quantity,
+                pop.price
+            FROM ProductOrderPurchase pop
+            JOIN Product p ON pop.product_id = p.product_id
+            WHERE pop.purchase_order_id = %s
+        """, (order_id,))
+        
+        products = cursor.fetchall()
+        conn.close()
+        
+        return jsonify(products)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/purchase_orders/<int:order_id>', methods=['PUT'])
+def update_purchase_order(order_id):
+    """Update a purchase order (basic info only, not products)"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['supplier_id', 'employee_id', 'total_price', 'order_date', 'expected_received_date']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'{field} is required'}), 400
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE PurchaseOrder 
+            SET 
+                supplier_id = %s,
+                employee_id = %s,
+                total_price = %s,
+                order_date = %s,
+                expected_received_date = %s,
+                actual_received_date = %s
+            WHERE purchase_order_id = %s
+        """, (
+            data['supplier_id'],
+            data['employee_id'],
+            data['total_price'],
+            data['order_date'],
+            data['expected_received_date'],
+            data.get('actual_received_date'),
+            order_id
+        ))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Purchase order not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Purchase order updated successfully',
+            'purchase_order_id': order_id
+        })
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/purchase_orders/<int:order_id>', methods=['DELETE'])
+def delete_purchase_order(order_id):
+    """Delete a purchase order"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # First delete associated products
+        cursor.execute("""
+            DELETE FROM ProductOrderPurchase 
+            WHERE purchase_order_id = %s
+        """, (order_id,))
+        
+        # Then delete the order
+        cursor.execute("""
+            DELETE FROM PurchaseOrder 
+            WHERE purchase_order_id = %s
+        """, (order_id,))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Purchase order not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Purchase order deleted successfully',
+            'purchase_order_id': order_id
+        })
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+
+########## Products in Manager base html  ###############      
 @app.route('/m_products/')
 def m_products():
     """Render the products management page"""
@@ -1640,6 +2003,167 @@ def update_product(product_id):
             conn.close()
         return jsonify({'error': str(e)}), 500   
 
+@app.route('/m_report')
+def m_report():
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT COUNT(*) AS total_employees FROM Employee WHERE is_valid = TRUE")
+    total_employees = cursor.fetchone()['total_employees']
+
+    cursor.execute("SELECT COUNT(*) AS total_customers FROM Customer WHERE is_valid = TRUE")
+    total_customers = cursor.fetchone()['total_customers']
+
+    cursor.execute("SELECT COUNT(*) AS total_suppliers FROM Supplier WHERE is_valid = TRUE")
+    total_suppliers = cursor.fetchone()['total_suppliers']
+
+    cursor.execute("SELECT COUNT(*) AS total_orders FROM `Order` WHERE is_valid = TRUE")
+    total_orders = cursor.fetchone()['total_orders']
+
+    cursor.execute("SELECT COUNT(*) AS total_purchase_orders FROM PurchaseOrder WHERE is_valid = TRUE")
+    total_purchase_orders = cursor.fetchone()['total_purchase_orders']
+
+    cursor.execute("SELECT COUNT(*) AS total_products FROM Product WHERE is_valid = TRUE")
+    total_products = cursor.fetchone()['total_products']
+
+    cursor.execute("SELECT COUNT(*) AS pending_deliveries FROM PurchaseOrder WHERE delivery_status = 'Pending' AND is_valid = TRUE")
+    pending_deliveries = cursor.fetchone()['pending_deliveries']
+
+    cursor.execute("SELECT SUM(amount_paid) AS total_revenue FROM Payment WHERE is_valid = TRUE")
+    total_revenue = cursor.fetchone()['total_revenue']
+
+
+    # Employees under each manager
+    cursor.execute("""
+    SELECT 
+    m.employee_name AS manager_name, 
+    e.employee_name AS employee_name, 
+    e.emp_role
+    FROM Employee e
+    JOIN Employee m ON m.employee_id = e.manager_id
+    WHERE e.is_valid = TRUE 
+    AND e.manager_id IN (
+        SELECT manager_id
+        FROM Employee
+        WHERE is_valid = TRUE
+        GROUP BY manager_id
+        HAVING COUNT(*) > 2
+    )
+    ORDER BY m.employee_name, e.employee_name
+    """)
+    employees_by_manager = cursor.fetchall()
+
+    # Purchase orders
+    cursor.execute("""
+        SELECT s.supplier_name, p.purchase_order_id, p.order_date, p.delivery_status
+        FROM PurchaseOrder p, Supplier s  
+        WHERE p.supplier_id = s.supplier_id AND p.is_valid = TRUE
+        ORDER BY p.order_date ASC
+        LIMIT 3
+    """)
+    purchase_orders = cursor.fetchall()
+
+    # Salary summary
+    cursor.execute("""
+        SELECT e.employee_name, 'Hourly' AS type, 
+               CONCAT('$', he.hourly_wages) AS salary_or_wage,
+               CONCAT('$', (he.hours_worked * he.hourly_wages)) AS total_wage
+        FROM HourlyEmployee he, Employee e 
+        WHERE he.is_valid = TRUE AND he.employee_id = e.employee_id
+
+        UNION
+
+        SELECT e.employee_name, 'Contract' AS type, 
+               CONCAT('$', c.salary) AS salary_or_wage,
+               NULL AS total_pay
+        FROM ContractEmployee ce, Contract c, Employee e 
+        WHERE ce.is_valid = TRUE AND c.is_valid = TRUE AND ce.contract_id = c.contract_id AND ce.employee_id = e.employee_id
+    """)
+    salary_data = cursor.fetchall()
+
+    # Sidebar display info
+    cursor.execute("SELECT * FROM Employee WHERE emp_role LIKE '%Manager%' LIMIT 1")
+    employee = cursor.fetchone()
+
+    #----------
+    cursor.execute("""
+    SELECT c.customer_id, c.customer_name, SUM(od.price * od.quantity) AS total_spent
+    FROM Customer c, `Order` o,OrderDetails od 
+    WHERE c.customer_id = o.customer_id AND o.order_id = od.order_id
+    GROUP BY c.customer_id, c.customer_name
+    ORDER BY total_spent DESC
+    LIMIT 4;
+    """)
+    customer_q1 = cursor.fetchall()
+
+    # Product ordered the most by quantity
+    cursor.execute("""
+    SELECT P.product_name, SUM(OD.quantity) AS total_quantity_sold
+    FROM OrderDetails OD
+    JOIN Product P ON OD.product_id = P.product_id
+    WHERE OD.is_valid = TRUE
+    GROUP BY P.product_name
+    HAVING SUM(OD.quantity) >= ALL (
+        SELECT SUM(quantity)
+        FROM OrderDetails
+        WHERE is_valid = 1
+        GROUP BY product_id
+    )
+""")
+    top_product = cursor.fetchone()
+
+    ''' 
+        cursor.execute("""
+            SELECT DISTINCT P.product_name 
+            FROM OrderDetails OD 
+            JOIN Product P ON OD.product_id = P.product_id 
+            WHERE OD.is_valid = 1 AND OD.price = (
+                SELECT MIN(price) 
+                FROM OrderDetails
+                WHERE is_valid = TRUE
+            )
+        """)
+        lowest_price_product = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT 
+                c.customer_id,
+                c.customer_name,
+                COUNT(DISTINCT o.order_id) AS total_orders,
+                SUM(od.price * od.quantity) AS total_amount_spent
+            FROM 
+                Customer c
+            JOIN `Order` o ON c.customer_id = o.customer_id
+            JOIN OrderDetails od ON o.order_id = od.order_id
+            WHERE o.is_valid = 1 AND od.is_valid = 1
+            GROUP BY c.customer_id, c.customer_name
+            ORDER BY total_amount_spent DESC
+        """)
+        customer_spending = cursor.fetchall()
+    '''
+
+
+    conn.close()
+
+    return render_template("m_report.html",
+        employee=employee,
+        total_employees=total_employees,
+        total_customers=total_customers,
+        total_suppliers=total_suppliers,
+        total_orders=total_orders,
+        total_purchase_orders=total_purchase_orders,
+        total_products=total_products,
+        total_revenue = total_revenue,
+        pending_deliveries=pending_deliveries,
+        employees_by_manager=employees_by_manager,
+        customer_q1=customer_q1,
+        purchase_orders=purchase_orders,
+        salary_data=salary_data, 
+        top_product = top_product, 
+    )
+
+################## Employee ############################
+
 @app.route('/emplog', methods=['GET', 'POST'])
 def emplog():
     if request.method == 'POST':
@@ -1668,8 +2192,8 @@ def emplog():
     return render_template('emplog.html')
 
 @app.route('/emp/<int:employee_id>')
-@app.route('/emp/<int:employee_id>/profile') 
-def emp(employee_id, profile=False):
+@app.route('/emp/<int:employee_id>/Eprofile') 
+def emp(employee_id, Eprofile=False):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
     
@@ -1690,7 +2214,7 @@ def emp(employee_id, profile=False):
     hourly_data = None
     contract_data = None
     
-    if request.path.endswith('/profile') or request.args.get('profile'):
+    if request.path.endswith('/Eprofile') or request.args.get('Eprofile'):
         cursor.execute("SELECT * FROM HourlyEmployee WHERE employee_id = %s", (employee_id,))
         hourly_data = cursor.fetchone()
         
@@ -1700,7 +2224,7 @@ def emp(employee_id, profile=False):
     conn.close()
     
     # Determine which template to render
-    if request.path.endswith('/profile') or request.args.get('profile'):
+    if request.path.endswith('/Eprofile') or request.args.get('Eprofile'):
         return render_template('emp.html', 
                             employee=employee,
                             hourly_data=hourly_data,
@@ -1713,15 +2237,16 @@ def emp(employee_id, profile=False):
 def e_orders(employee_id):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
-    
+
     cursor.execute("SELECT * FROM Employee WHERE employee_id = %s", (employee_id,))
     employee = cursor.fetchone()
     conn.close()
-    
+
     if not employee:
         return redirect(url_for('emplog'))
-    
+
     return render_template('e_orders.html', employee=employee)
+
 
 @app.route('/api/employees/<int:employee_id>/orders')
 def get_employee_orders(employee_id):
@@ -1860,253 +2385,134 @@ def e_products(employee_id):
     
     return render_template('e_products.html', employee=employee, products=products)
 
-@app.route('/e_invoices/<int:employee_id>')
-def e_invoices(employee_id):
-    """Invoices management page for employees"""
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    cursor.execute("SELECT * FROM Employee WHERE employee_id = %s", (employee_id,))
-    employee = cursor.fetchone()
-    
-    if not employee:
-        conn.close()
-        return redirect(url_for('emplog'))
-    
-    # Get invoices data
-    cursor.execute('''
-        SELECT invoice_id, order_id, invoice_date, due_date, status, payment_method
-        FROM Invoice
-        WHERE employee_id = %s
-        ORDER BY invoice_date ASC
-    ''', (employee_id,))
-    
-    invoices = cursor.fetchall()
-    conn.close()
-    
-    return render_template('e_invoices.html', employee=employee, invoices=invoices)
-
-@app.route('/api/employees/<int:employee_id>/invoices')
-def get_employee_invoices(employee_id):
-    """API endpoint for employee invoices data"""
-    try:
-        conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
-        
-        cursor.execute('''
-            SELECT invoice_id, order_id, invoice_date, due_date,
-                   status, payment_method
-            FROM Invoice
-            WHERE employee_id = %s
-            ORDER BY invoice_date ASC
-        ''', (employee_id,))
-        
-        invoices = cursor.fetchall()
-        conn.close()
-        
-        invoices_list = []
-        for invoice in invoices:
-            invoices_list.append({
-                'invoice_id': invoice['invoice_id'],
-                'order_id': invoice['order_id'],
-                'invoice_date': str(invoice['invoice_date']),
-                'due_date': str(invoice['due_date']),
-                'status': invoice['status'],
-                'payment_method': invoice['payment_method']
-            })
-        
-        return jsonify(invoices_list)
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/e_reports/<int:employee_id>')
 def e_reports(employee_id):
-    """Reports page for employees"""
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
-    
-    cursor.execute("SELECT * FROM Employee WHERE employee_id = %s", (employee_id,))
+
+    # Employee basic info
+    cursor.execute("""
+        SELECT * FROM Employee 
+        WHERE employee_id = %s AND is_valid = TRUE
+    """, (employee_id,))
     employee = cursor.fetchone()
-    
-    if not employee:
-        conn.close()
-        return redirect(url_for('emplog'))
-    
-    # Get available report types (could be from database or hardcoded)
-    cursor.execute('''
-        SELECT report_id, report_name, ASCription, last_generated
-        FROM AvailableReports
-        WHERE employee_accessible = TRUE
-    ''')
-    reports = cursor.fetchall()
-    conn.close()
-    
-    # If no reports table exists, use default reports
-    if not reports:
-        reports = [
-            {'report_id': 1, 'report_name': 'Sales Summary', 'ASCription': 'Monthly sales figures'},
-            {'report_id': 2, 'report_name': 'Inventory Levels', 'ASCription': 'Current stock status'},
-            {'report_id': 3, 'report_name': 'Customer Orders', 'ASCription': 'Recent customer orders'}
-        ]
-    
-    return render_template('e_reports.html', employee=employee, reports=reports)
 
-@app.route('/api/employees/<int:employee_id>/reports')
-def get_employee_reports(employee_id):
-    """API endpoint for employee reports data"""
-    try:
-        conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
-        
-        # First verify employee exists
-        cursor.execute("SELECT 1 FROM Employee WHERE employee_id = %s", (employee_id,))
-        if not cursor.fetchone():
-            conn.close()
-            return jsonify({'error': 'Employee not found'}), 404
-        
-        # Get report metadata
-        cursor.execute('''
-            SELECT report_id, report_name, ASCription, last_generated
-            FROM AvailableReports
-            WHERE employee_accessible = TRUE
-        ''')
-        
-        reports = cursor.fetchall()
-        conn.close()
-        
-        # Format response
-        reports_list = []
-        for report in reports:
-            reports_list.append({
-                'report_id': report['report_id'],
-                'report_name': report['report_name'],
-                'ASCription': report['ASCription'],
-                'last_generated': str(report['last_generated']) if report.get('last_generated') else None
-            })
-        
-        return jsonify(reports_list)
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-
-@app.route('/m_report')
-def m_report():
-    conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    cursor.execute("SELECT COUNT(*) AS total_employees FROM Employee WHERE is_valid = TRUE")
-    total_employees = cursor.fetchone()['total_employees']
-
-    cursor.execute("SELECT COUNT(*) AS total_customers FROM Customer WHERE is_valid = TRUE")
-    total_customers = cursor.fetchone()['total_customers']
-
-    cursor.execute("SELECT COUNT(*) AS total_suppliers FROM Supplier WHERE is_valid = TRUE")
-    total_suppliers = cursor.fetchone()['total_suppliers']
-
-    cursor.execute("SELECT COUNT(*) AS total_orders FROM `Order` WHERE is_valid = TRUE")
-    total_orders = cursor.fetchone()['total_orders']
-
-    cursor.execute("SELECT COUNT(*) AS total_purchase_orders FROM PurchaseOrder WHERE is_valid = TRUE")
-    total_purchase_orders = cursor.fetchone()['total_purchase_orders']
-
-    cursor.execute("SELECT COUNT(*) AS total_products FROM Product WHERE is_valid = TRUE")
-    total_products = cursor.fetchone()['total_products']
-
-    cursor.execute("SELECT COUNT(*) AS pending_deliveries FROM PurchaseOrder WHERE delivery_status = 'Pending' AND is_valid = TRUE")
-    pending_deliveries = cursor.fetchone()['pending_deliveries']
-
-    cursor.execute("SELECT SUM(amount_paid) AS total_revenue FROM Payment WHERE is_valid = TRUE")
-    total_revenue = cursor.fetchone()['total_revenue']
-
-
-    # Employees under each manager
+    # Total orders handled by the employee
     cursor.execute("""
-    SELECT 
-        m.employee_name AS manager_name,
-        e.employee_name AS employee_name,
-        e.emp_role,
-        DATE_FORMAT(e.hire_date, '%%Y-%%m-%%d') AS hire_date
-    FROM Employee e
-    JOIN Employee m ON m.employee_id = e.manager_id
-    WHERE e.is_valid = TRUE
-    AND e.manager_id IN (
-        SELECT manager_id
-        FROM Employee
-        WHERE is_valid = TRUE
-        GROUP BY manager_id
-        HAVING COUNT(*) > 2
-    )
-    ORDER BY m.employee_name, e.employee_name
-    """)
-    employees_by_manager = cursor.fetchall()
+        SELECT COUNT(*) AS total_orders_handled
+        FROM `Order`
+        WHERE employee_id = %s AND is_valid = TRUE
+    """, (employee_id,))
+    total_orders_handled = cursor.fetchone()['total_orders_handled']
 
-    # Purchase orders
+    # Total sales value handled by the employee
     cursor.execute("""
-        SELECT s.supplier_name, p.purchase_order_id, p.order_date, p.delivery_status
-        FROM PurchaseOrder p
-        JOIN Supplier s ON p.supplier_id = s.supplier_id
-        WHERE p.is_valid = TRUE
-        ORDER BY p.order_date DESC
-        LIMIT 10
-    """)
+        SELECT SUM(od.price * od.quantity) AS total_sales_value
+        FROM `Order` o, OrderDetails od 
+        WHERE o.order_id = od.order_id AND o.employee_id = %s AND o.is_valid = TRUE AND od.is_valid = TRUE
+    """, (employee_id,))
+    total_sales_value = cursor.fetchone()['total_sales_value'] or 0
+
+    # Purchase orders made by the employee
+    cursor.execute("""
+        SELECT po.purchase_order_id, s.supplier_name, po.order_date, po.delivery_status
+        FROM PurchaseOrder po, Supplier s  
+        WHERE po.supplier_id = s.supplier_id AND po.employee_id = %s AND po.is_valid = TRUE
+        ORDER BY po.order_date DESC
+    """, (employee_id,))
     purchase_orders = cursor.fetchall()
 
-    # Salary summary
+    # Orders with product details
     cursor.execute("""
-        SELECT e.employee_name, 'Hourly' AS type, 
-               CONCAT('$', he.hourly_wages) AS salary_or_wage,
-               CONCAT('$', (he.hours_worked * he.hourly_wages)) AS total_pay
+        SELECT o.order_id, o.order_date, p.product_name, od.quantity, od.price, (od.quantity * od.price) AS total_value
+        FROM `Order` o, OrderDetails od, Product p 
+        WHERE o.order_id = od.order_id AND od.product_id = p.product_id AND o.employee_id = %s AND o.is_valid = TRUE AND od.is_valid = TRUE
+        ORDER BY o.order_date DESC
+    """, (employee_id,))
+    handled_orders = cursor.fetchall()
+
+    # Determine employee type: Hourly or Contract
+    cursor.execute("""
+        SELECT 'Hourly' AS type, he.hourly_wages AS salary_or_wage, he.hours_worked, (he.hourly_wages * he.hours_worked) AS total_pay
         FROM HourlyEmployee he
-        JOIN Employee e ON he.employee_id = e.employee_id
-        WHERE he.is_valid = TRUE
+        WHERE he.employee_id = %s AND he.is_valid = TRUE
+    """, (employee_id,))
+    hourly = cursor.fetchone()
 
-        UNION
-
-        SELECT e.employee_name, 'Contract' AS type, 
-               CONCAT('$', c.salary) AS salary_or_wage,
-               NULL AS total_pay
-        FROM ContractEmployee ce
-        JOIN Contract c ON ce.contract_id = c.contract_id
-        JOIN Employee e ON ce.employee_id = e.employee_id
-        WHERE ce.is_valid = TRUE AND c.is_valid = TRUE
-    """)
-    salary_data = cursor.fetchall()
-
-    # Sidebar display info
-    cursor.execute("SELECT * FROM Employee WHERE emp_role LIKE '%Manager%' LIMIT 1")
-    employee = cursor.fetchone()
-
-    #----------
     cursor.execute("""
-    SELECT c.customer_id, c.customer_name, SUM(od.price * od.quantity) AS total_spent
-    FROM Customer c, `Order` o,OrderDetails od 
-    WHERE c.customer_id = o.customer_id AND o.order_id = od.order_id
-    GROUP BY c.customer_id, c.customer_name
-    ORDER BY total_spent DESC
-    LIMIT 4;
+        SELECT 'Contract' AS type, c.salary AS salary_or_wage, NULL AS hours_worked, NULL AS total_pay
+        FROM ContractEmployee ce, Contract c  
+        WHERE ce.contract_id = c.contract_id AND ce.employee_id = %s AND ce.is_valid = TRUE AND c.is_valid = TRUE
+    """, (employee_id,))
+    contract = cursor.fetchone()
+
+    salary_info = hourly or contract
+
+    # Get the minimum order item value
+    cursor.execute("""
+        SELECT MIN(price * quantity) AS min_value
+        FROM OrderDetails
+        WHERE is_valid = TRUE
     """)
-    customer_q1 = cursor.fetchall()
+    min_value = cursor.fetchone()['min_value']
+
+    # Get employees who handled orders with that minimum value
+    cursor.execute("""
+        SELECT DISTINCT E.employee_name, O.order_id, (OD.price * OD.quantity) AS order_value
+        FROM `Order` O
+        JOIN OrderDetails OD ON O.order_id = OD.order_id
+        JOIN Employee E ON O.employee_id = E.employee_id
+        WHERE (OD.price * OD.quantity) = %s
+        AND O.is_valid = TRUE AND OD.is_valid = TRUE
+    """, (min_value,))
+    employees = cursor.fetchall()
+
+    # Avg order value per employee
+    cursor.execute("""
+        SELECT E.employee_name, AVG(OD.price * OD.quantity) AS avg_order_value
+        FROM Employee E
+        JOIN `Order` O ON E.employee_id = O.employee_id
+        JOIN OrderDetails OD ON O.order_id = OD.order_id
+        WHERE O.is_valid = TRUE AND OD.is_valid = TRUE
+        GROUP BY E.employee_name
+        ORDER BY E.employee_name
+    """)
+    avg_order_values = cursor.fetchall()
+
+
+    # Employee(s) with most valid orders
+    cursor.execute("""
+        SELECT E.employee_name, COUNT(*) AS order_count
+        FROM `Order` O
+        JOIN Employee E ON O.employee_id = E.employee_id
+        WHERE O.is_valid = TRUE
+        GROUP BY E.employee_name
+        HAVING COUNT(*) >= ALL (
+            SELECT COUNT(*)
+            FROM `Order`
+            WHERE is_valid = TRUE
+            GROUP BY employee_id
+        )
+    """)
+    top_order_employees = cursor.fetchall()
 
     conn.close()
 
-    return render_template("m_report.html",
+    return render_template("e_reports.html",
         employee=employee,
-        total_employees=total_employees,
-        total_customers=total_customers,
-        total_suppliers=total_suppliers,
-        total_orders=total_orders,
-        total_purchase_orders=total_purchase_orders,
-        total_products=total_products,
-        total_revenue = total_revenue,
-        pending_deliveries=pending_deliveries,
-        employees_by_manager=employees_by_manager,
-        customer_q1=customer_q1,
+        total_orders_handled=total_orders_handled,
+        total_sales_value=total_sales_value,
         purchase_orders=purchase_orders,
-        salary_data=salary_data
+        handled_orders=handled_orders,
+        salary_info=salary_info,
+        min_value=min_value,
+        employees=employees,
+        avg_order_values=avg_order_values,
+        top_order_employees=top_order_employees
     )
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
