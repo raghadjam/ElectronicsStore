@@ -1,0 +1,274 @@
+{% extends "managerbase.html" %}
+
+{% block title %}Customers{% endblock %}
+
+{% block page_title %}Customers{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Customers</h5>
+            <div>
+                <button class="btn btn-primary-custom btn-sm" onclick="fetchCustomers()">
+                    <i class="fas fa-sync-alt me-1"></i> Reload
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Search functionality -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <select id="searchAttribute" class="form-select">
+                        <option value="customer_id">Customer ID</option>
+                        <option value="customer_name">Customer Name</option>
+                        <option value="email_address">Email</option>
+                        <option value="phone_number">Phone</option>
+                        <option value="city">City</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" id="searchValue" class="form-control" placeholder="Search...">
+                        <button class="btn btn-primary-custom" onclick="searchCustomers()">
+                            <i class="fas fa-search me-1"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">Customer ID</th>
+                            <th scope="col">Customer Name</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Phone</th>
+                            <th scope="col">City</th>
+                            <th scope="col">Orders</th>
+                            <th scope="col">Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customersTable">
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <span class="visually-hidden">Loading...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        fetchCustomers();
+    });
+
+    function fetchCustomers() {
+        // Show loading state
+        const tableBody = document.getElementById('customersTable');
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        // Fetch customers
+        fetch('/api/manager/customers')
+            .then(response => response.json())
+            .then(data => {
+                tableBody.innerHTML = ''; // Clear loading state
+
+                if (data.error) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="text-center text-danger py-4">
+                                Error loading customers: ${data.error}
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                if (data.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                No customers found
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                data.forEach(customer => {
+                    const statusClass = customer.is_valid ? 'status-completed' : 'status-processing';
+                    const statusText = customer.is_valid ? 'Active' : 'Inactive';
+                    const deleteButton = customer.is_valid ? `
+                        <button class="btn btn-sm btn-danger" onclick="deactivateCustomer(${customer.customer_id})">
+                            <i class="fas fa-times"></i> Delete
+                        </button>
+                    ` : '';
+
+                    const row = `
+                        <tr id="customer-${customer.customer_id}">
+                            <td>${customer.customer_id}</td>
+                            <td>${customer.customer_name}</td>
+                            <td>${customer.email_address || 'N/A'}</td>
+                            <td>${customer.phone_number || 'N/A'}</td>
+                            <td>${customer.city || 'N/A'}</td>
+                            <td>${customer.order_count || 0}</td>
+                            <td>${deleteButton}</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching customers:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-danger py-4">
+                            Error loading customers. Please try again.
+                        </td>
+                    </tr>
+                `;
+            });
+    }
+
+    function searchCustomers() {
+        const searchAttribute = document.getElementById('searchAttribute').value;
+        let searchValue = document.getElementById('searchValue').value;
+        const statusDropdown = document.getElementById('statusValue');
+
+        // Show/hide status dropdown based on selected attribute
+        if (searchAttribute === 'is_valid') {
+            document.getElementById('searchValue').classList.add('d-none');
+            statusDropdown.classList.remove('d-none');
+            searchValue = statusDropdown.value;
+        } else {
+            document.getElementById('searchValue').classList.remove('d-none');
+            statusDropdown.classList.add('d-none');
+        }
+
+        // Show loading state
+        const tableBody = document.getElementById('customersTable');
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (searchValue) {
+            params.append('search_by', searchAttribute);
+            params.append('search_value', searchValue);
+        }
+
+        // Fetch customers with search parameters
+        fetch(`/api/manager/customers?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                displayCustomers(data);
+            })
+            .catch(error => {
+                console.error('Error searching customers:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-danger py-4">
+                            Error searching customers. Please try again.
+                        </td>
+                    </tr>
+                `;
+            });
+    }
+
+    function displayCustomers(data) {
+        const tableBody = document.getElementById('customersTable');
+        tableBody.innerHTML = '';
+
+        if (data.error) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-danger py-4">
+                        Error loading customers: ${data.error}
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        if (data.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        No customers found matching your criteria
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        data.forEach(customer => {
+            const statusClass = customer.is_valid ? 'status-completed' : 'status-processing';
+            const statusText = customer.is_valid ? 'Active' : 'Inactive';
+            const deleteButton = customer.is_valid ? `
+                <button class="btn btn-sm btn-danger" onclick="deactivateCustomer(${customer.customer_id})">
+                    <i class="fas fa-times"></i> Delete
+                </button>
+            ` : '';
+
+            const row = `
+                <tr id="customer-${customer.customer_id}">
+                    <td>${customer.customer_id}</td>
+                    <td>${customer.customer_name}</td>
+                    <td>${customer.email_address || 'N/A'}</td>
+                    <td>${customer.phone_number || 'N/A'}</td>
+                    <td>${customer.city || 'N/A'}</td>
+                    <td>${customer.order_count || 0}</td>
+                    <td>${deleteButton}</td>
+                </tr>
+            `;
+            tableBody.innerHTML += row;
+        });
+    }
+
+    function deactivateCustomer(customerId) {
+        if (confirm('Are you sure you want to delete this customer?')) {
+            fetch(`/api/manager/customers/${customerId}`, {
+                method: 'DELETE'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.message) {
+                        fetchCustomers(); // Refresh the table
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to delete'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to delete customer');
+                });
+        }
+    }
+</script>
+{% endblock %}

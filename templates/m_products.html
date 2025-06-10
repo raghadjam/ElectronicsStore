@@ -1,0 +1,392 @@
+{% extends "managerbase.html" %}
+
+{% block title %}Products{% endblock %}
+
+{% block page_title %}Products{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Products</h5>
+            <div>
+                <button class="btn btn-primary-custom btn-sm me-2" onclick="openAddProductModal()">
+                    <i class="fas fa-plus me-1"></i> Add Product
+                </button>
+                <button class="btn btn-primary-custom btn-sm" onclick="fetchProducts()">
+                    <i class="fas fa-sync-alt me-1"></i> Reload
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Search functionality -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <select id="searchAttribute" class="form-select">
+                        <option value="product_id">Product ID</option>
+                        <option value="product_name">Product Name</option>
+                        <option value="category">Category</option>
+                    </select>
+                </div>
+                <div class="col-md-7">
+                    <div class="input-group">
+                        <input type="text" id="searchValue" class="form-control" placeholder="Search...">
+                        <button class="btn btn-primary-custom" onclick="searchProducts()">
+                            <i class="fas fa-search me-1"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Product Name</th>
+                            <th scope="col">Category</th>
+                            <th scope="col">Price</th>
+                            <th scope="col">Stock</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTable">
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <span class="visually-hidden">Loading...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Product Modal -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productModalLabel">Add New Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm">
+                    <input type="hidden" id="productId">
+
+                    <div class="col-md-6">
+                        <label for="category" class="form-label">Category</label>
+                        <label for="category" class="form-label">Category</label>
+                        <select class="form-select" id="category" required>
+                            <option value="">Select a category</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Accessories">Accessories</option>
+                        </select>
+                    </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="newProductId" class="form-label">Product ID</label>
+                    <input type="number" class="form-control" id="newProductId" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label for="price" class="form-label">Price</label>
+                <input type="number" step="1" class="form-control" id="price" required>
+            </div>
+            <div class="col-md-6">
+                <label for="stockQuantity" class="form-label">Stock Quantity</label>
+                <input type="number" class="form-control" id="stockQuantity" required>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="stockArrivalDate" class="form-label">Stock Arrival Date</label>
+                <input type="date" class="form-control" id="stockArrivalDate">
+            </div>
+        </div>
+        </form>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary-custom" onclick="saveProduct()">Save Product</button>
+    </div>
+</div>
+</div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        fetchProducts();
+    });
+
+    function fetchProducts() {
+        // Show loading state
+        const tableBody = document.getElementById('productsTable');
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        // Fetch products
+        fetch('/api/manager/products')
+            .then(response => response.json())
+            .then(data => {
+                displayProducts(data);
+            })
+            .catch(error => {
+                console.error('Error fetching products:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-danger py-4">
+                            Error loading products. Please try again.
+                        </td>
+                    </tr>
+                `;
+            });
+    }
+
+    function displayProducts(data) {
+        const tableBody = document.getElementById('productsTable');
+        tableBody.innerHTML = '';
+
+        if (data.error) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-danger py-4">
+                        Error loading products: ${data.error}
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        if (data.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        No products found
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        data.forEach(product => {
+            const arrivalDate = product.stock_arrival_date ? new Date(product.stock_arrival_date).toLocaleDateString() : 'N/A';
+
+            const row = `
+                <tr id="product-${product.product_id}">
+                    <td>${product.product_id}</td>
+                    <td>${product.product_name}</td>
+                    <td>${product.category}</td>
+                    <td>$${product.price.toFixed(2)}</td>
+                    <td>${product.stock_quantity}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary me-1" onclick="editProduct(${product.product_id})">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deactivateProduct(${product.product_id})">
+                            <i class="fas fa-times"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tableBody.innerHTML += row;
+        });
+    }
+
+    function searchProducts() {
+        const searchAttribute = document.getElementById('searchAttribute').value;
+        const searchValue = document.getElementById('searchValue').value;
+
+        // Show loading state
+        const tableBody = document.getElementById('productsTable');
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (searchValue) {
+            params.append('search_by', searchAttribute);
+            params.append('search_value', searchValue);
+        }
+
+        // Fetch products with search parameters
+        fetch(`/api/manager/products?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                displayProducts(data);
+            })
+            .catch(error => {
+                console.error('Error searching products:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-danger py-4">
+                            Error searching products. Please try again.
+                        </td>
+                    </tr>
+                `;
+            });
+    }
+
+    function openAddProductModal() {
+        document.getElementById('productId').value = '';
+        document.getElementById('productModalLabel').textContent = 'Add New Product';
+        document.getElementById('productForm').reset();
+
+        // Show the Product ID field for new products
+        document.getElementById('newProductId').closest('.row').style.display = '';
+        document.getElementById('newProductId').required = true;
+
+        const modal = new bootstrap.Modal(document.getElementById('productModal'));
+        modal.show();
+    }
+
+    function editProduct(productId) {
+        // Show loading state in modal
+        const modalBody = document.querySelector('#productModal .modal-body');
+        const originalContent = modalBody.innerHTML;
+        modalBody.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+
+        // Fetch product details
+        fetch(`/api/manager/products/${productId}`)
+            .then(response => response.json())
+            .then(product => {
+                // Restore modal content
+                modalBody.innerHTML = originalContent;
+
+                // Populate form
+                document.getElementById('productId').value = product.product_id;
+                document.getElementById('productModalLabel').textContent = 'Edit Product';
+                document.getElementById('newProductId').value = product.product_id;
+                document.getElementById('productName').value = product.product_name;
+                document.getElementById('category').value = product.category;
+                document.getElementById('price').value = product.price;
+                document.getElementById('stockQuantity').value = product.stock_quantity;
+                document.getElementById('stockArrivalDate').value = product.stock_arrival_date || '';
+
+                // Hide the Product ID field for editing (it's read-only)
+                document.getElementById('newProductId').closest('.row').style.display = 'none';
+                document.getElementById('newProductId').required = false;
+
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('productModal'));
+                modal.show();
+            })
+            .catch(error => {
+                console.error('Error fetching product:', error);
+                modalBody.innerHTML = originalContent;
+                alert('Failed to load product details');
+            });
+    }
+
+    function saveProduct() {
+        const productId = document.getElementById('productId').value;
+        const isEdit = productId !== '';
+
+        const productData = {
+            product_id: isEdit ? productId : document.getElementById('newProductId').value,
+            product_name: document.getElementById('productName').value,
+            category: document.getElementById('category').value,
+            price: parseFloat(document.getElementById('price').value),
+            stock_quantity: parseInt(document.getElementById('stockQuantity').value),
+            stock_arrival_date: document.getElementById('stockArrivalDate').value || null
+        };
+
+        // Validate required fields
+        if (!productData.product_id || !productData.product_name || !productData.category ||
+            isNaN(productData.price) || isNaN(productData.stock_quantity)) {
+            alert('Please fill in all required fields with valid values');
+            return;
+        }
+
+        const url = isEdit ? `/api/manager/products/${productId}` : '/api/manager/products';
+        const method = isEdit ? 'PUT' : 'POST';
+
+        fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(productData)
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    // Close modal and refresh table
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('productModal'));
+                    modal.hide();
+                    fetchProducts();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to save product: ' + (error.message || error.error || 'Unknown error'));
+            });
+    }
+
+    function deactivateProduct(productId) {
+        if (confirm('Are you sure you want to delete this product?')) {
+            fetch(`/api/manager/products/${productId}`, {
+                method: 'DELETE'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.message) {
+                        fetchProducts(); // Refresh the table
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to delete'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to delete product');
+                });
+        }
+    }
+</script>
+
+<style>
+    .btn-primary-custom {
+        background-color: #4e73df;
+        color: white;
+    }
+
+    .btn-primary-custom:hover {
+        background-color: #2e59d9;
+        color: white;
+    }
+</style>
+{% endblock %}

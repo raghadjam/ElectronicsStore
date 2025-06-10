@@ -1,0 +1,356 @@
+{% extends "maangerbase.html" %}
+
+{% block title %}My Purchase Orders{% endblock %}
+
+{% block page_title %}My Purchase Orders{% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="container">
+        <div class="d-flex bd-highlight mb-3">
+            <div class="me-auto p-2 bd-highlight">
+                <h2>Purchase Orders</h2>
+            </div>
+            <div class="p-2 bd-highlight">
+                <button type="button" class="btn btn-secondary" onclick="showOrderCreateBox()">Create New
+                    Purchase Order</button>
+            </div>
+        </div>
+        <!-- Search functionality -->
+        <div class="d-flex mb-3">
+            <select id="searchAttribute" class="form-select" style="width: 200px; margin-right: 10px;">
+                <option value="purchase_order_id">Purchase Order ID</option>
+                <option value="supplier_id">Supplier ID</option>
+                <option value="employee_id">Employee ID</option>
+                <option value="total_price">Total Price</option>
+                <option value="order_date">Order Date</option>
+            </select>
+            <input type="text" id="searchValue" class="form-control" placeholder="Search...">
+            <button class="btn btn-secondary" onclick="fetchOrders()"
+                style="margin-left: 10px; background-color: green;">Reload</button>
+            <button class="btn btn-primary" onclick="searchOrders()" style="margin-left: 10px;">Search</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">Purchase Order ID</th>
+                        <th scope="col">Supplier ID</th>
+                        <th scope="col">Employee ID</th>
+                        <th scope="col">Total Price</th>
+                        <th scope="col">Order Date</th>
+                        <th scope="col">Expected Date</th>
+                        <th scope="col">Received Date</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="mytable">
+                    <tr>
+                        <th scope="row" colspan="8">Loading...</th>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Edit Order Section -->
+        <div id="editOrderBox" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    Edit Purchase Order
+                </div>
+                <div class="card-body">
+                    <!-- Form to edit order -->
+                    <form id="editOrderForm">
+                        <input type="hidden" id="editPurchaseOrderId">
+                        <div class="mb-3">
+                            <label for="editSupplierId" class="form-label">Supplier ID</label>
+                            <input type="number" class="form-control" id="editSupplierId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editEmployeeId" class="form-label">Employee ID</label>
+                            <input type="number" class="form-control" id="editEmployeeId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editTotalPrice" class="form-label">Total Price</label>
+                            <input type="number" step="0.01" class="form-control" id="editTotalPrice" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editOrderDate" class="form-label">Order Date</label>
+                            <input type="date" class="form-control" id="editOrderDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editExpectedDate" class="form-label">Expected Received Date</label>
+                            <input type="date" class="form-control" id="editExpectedDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editActualDate" class="form-label">Actual Received Date (optional)</label>
+                            <input type="date" class="form-control" id="editActualDate">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update</button>
+                        <button type="button" class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Order Section -->
+        <div id="createOrderBox" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    Create New Purchase Order
+                </div>
+                <div class="card-body">
+                    <!-- Form to create order -->
+                    <form id="createOrderForm">
+                        <div class="mb-3">
+                            <label for="supplierId" class="form-label">Supplier ID</label>
+                            <input type="number" class="form-control" id="supplierId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="employeeId" class="form-label">Employee ID</label>
+                            <input type="number" class="form-control" id="employeeId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="totalPrice" class="form-label">Total Price</label>
+                            <input type="number" step="0.01" class="form-control" id="totalPrice" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="orderDate" class="form-label">Order Date</label>
+                            <input type="date" class="form-control" id="orderDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="expectedDate" class="form-label">Expected Received Date</label>
+                            <input type="date" class="form-control" id="expectedDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="actualDate" class="form-label">Actual Received Date (optional)</label>
+                            <input type="date" class="form-control" id="actualDate">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                        <button type="button" class="btn btn-secondary" onclick="cancelCreate()">Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        fetchOrders();
+    });
+
+    function fetchOrders() {
+        fetch('/api/purchase_orders')
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.getElementById('mytable');
+                tableBody.innerHTML = ''; // Clear previous data
+
+                if (data.error) {
+                    console.error(data.error);
+                    return;
+                }
+
+                data.forEach(order => {
+                    const row = `
+                        <tr id="purchase-order-${order.purchase_order_id}">
+                            <td>${order.purchase_order_id}</td>
+                            <td>${order.supplier_id}</td>
+                            <td>${order.employee_id}</td>
+                            <td>$${order.total_price.toFixed(2)}</td>
+                            <td>${order.order_date}</td>
+                            <td>${order.expected_received_date}</td>
+                            <td>${order.actual_received_date || 'Not received yet'}</td>
+                            <td>
+                                <button class="btn btn-warning" onclick="editOrder(${order.purchase_order_id})">Edit</button>
+                                <button class="btn btn-danger" onclick="deleteOrder(${order.purchase_order_id})">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            })
+            .catch(error => console.error('Error fetching purchase orders:', error));
+    }
+
+    function showOrderCreateBox() {
+        document.getElementById('createOrderBox').style.display = 'block';
+    }
+
+    function cancelCreate() {
+        document.getElementById('createOrderBox').style.display = 'none';
+        document.getElementById('createOrderForm').reset();
+    }
+
+    // Function to handle form submission for creating a new order
+    document.getElementById('createOrderForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        const formData = {
+            supplier_id: document.getElementById('supplierId').value,
+            employee_id: document.getElementById('employeeId').value,
+            total_price: document.getElementById('totalPrice').value,
+            order_date: document.getElementById('orderDate').value,
+            expected_received_date: document.getElementById('expectedDate').value,
+            actual_received_date: document.getElementById('actualDate').value || null
+        };
+
+        fetch('/api/purchase_orders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    fetchOrders();
+                    document.getElementById('createOrderBox').style.display = 'none';
+                    document.getElementById('createOrderForm').reset();
+                } else {
+                    alert(data.error || 'Failed to create purchase order');
+                }
+            })
+            .catch(error => {
+                console.error('Error creating purchase order:', error);
+                alert('An error occurred while creating purchase order.');
+            });
+    });
+
+    function deleteOrder(purchaseOrderId) {
+        if (confirm('Are you sure you want to delete this purchase order?')) {
+            fetch(`/api/purchase_orders/${purchaseOrderId}`, {
+                method: 'DELETE'
+            })
+                .then(response => {
+                    if (response.ok) {
+                        document.querySelector(`#purchase-order-${purchaseOrderId}`).remove();
+                        alert('Purchase order deleted successfully!');
+                    } else {
+                        alert('Failed to delete purchase order.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting purchase order:', error);
+                    alert('An error occurred while deleting purchase order.');
+                });
+        }
+    }
+
+    function editOrder(purchaseOrderId) {
+        fetch(`/api/purchase_orders/${purchaseOrderId}`)
+            .then(response => response.json())
+            .then(order => {
+                document.getElementById('editPurchaseOrderId').value = order.purchase_order_id;
+                document.getElementById('editSupplierId').value = order.supplier_id;
+                document.getElementById('editEmployeeId').value = order.employee_id;
+                document.getElementById('editTotalPrice').value = order.total_price;
+                document.getElementById('editOrderDate').value = order.order_date;
+                document.getElementById('editExpectedDate').value = order.expected_received_date;
+                document.getElementById('editActualDate').value = order.actual_received_date || '';
+
+                document.getElementById('editOrderBox').style.display = 'block';
+            })
+            .catch(error => console.error('Error fetching purchase order details:', error));
+    }
+
+    function cancelEdit() {
+        document.getElementById('editOrderBox').style.display = 'none';
+        document.getElementById('editOrderForm').reset();
+    }
+
+    // Function to handle form submission for editing an order
+    document.getElementById('editOrderForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        const purchaseOrderId = document.getElementById('editPurchaseOrderId').value;
+        const formData = {
+            employee_id: document.getElementById('editEmployeeId').value,
+            supplier_id: document.getElementById('editSupplierId').value,
+            total_price: document.getElementById('editTotalPrice').value,
+            order_date: document.getElementById('editOrderDate').value,
+            expected_received_date: document.getElementById('editExpectedDate').value,
+            actual_received_date: document.getElementById('editActualDate').value || null
+        };
+
+        fetch(`/api/purchase_orders/${purchaseOrderId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    fetchOrders();
+                    document.getElementById('editOrderBox').style.display = 'none';
+                } else {
+                    alert(data.error || 'Failed to update purchase order');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating purchase order:', error);
+                alert('An error occurred while updating purchase order.');
+            });
+    });
+
+    // Search orders function
+    function searchOrders() {
+        const attribute = document.getElementById('searchAttribute').value;
+        const value = document.getElementById('searchValue').value;
+
+        if (!value) {
+            alert('Please enter a search value');
+            return;
+        }
+
+        fetch('/searchPurchaseOrders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ attribute, value }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                const table = document.getElementById('mytable');
+                table.innerHTML = '';
+
+                if (data.purchase_orders.length === 0) {
+                    const noResultsRow = `<tr><td colspan="8">No results found</td></tr>`;
+                    table.insertAdjacentHTML('beforeend', noResultsRow);
+                    return;
+                }
+
+                data.purchase_orders.forEach(order => {
+                    const row = `<tr id="purchase-order-${order.purchase_order_id}">
+                    <td>${order.purchase_order_id}</td>
+                    <td>${order.supplier_id}</td>
+                    <td>${order.employee_id}</td>
+                    <td>$${order.total_price.toFixed(2)}</td>
+                    <td>${order.order_date}</td>
+                    <td>${order.expected_received_date}</td>
+                    <td>${order.actual_received_date || 'Not received yet'}</td>
+                    <td>
+                        <button class="btn btn-warning" onclick="editOrder(${order.purchase_order_id})">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteOrder(${order.purchase_order_id})">Delete</button>
+                    </td>
+                </tr>`;
+                    table.insertAdjacentHTML('beforeend', row);
+                });
+            })
+            .catch(error => console.error('Error:', error));
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4"
+    crossorigin="anonymous"></script>
+</body>
+
+</html>

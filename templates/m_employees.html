@@ -1,0 +1,705 @@
+{% extends "managerbase.html" %}
+
+{% block title %}Employees{% endblock %}
+
+{% block page_title %}Employees{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Employees</h5>
+        <div>
+            <button class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#createEmployeeModal">
+                <i class="fas fa-plus me-1"></i> New Employee
+            </button>
+            <button class="btn btn-primary-custom btn-sm" onclick="fetchEmployees()">
+                <i class="fas fa-sync-alt me-1"></i> Reload
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Create Employee Modal -->
+        <div class="modal fade" id="createEmployeeModal" tabindex="-1" aria-labelledby="createEmployeeModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createEmployeeModalLabel">Create New Employee</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="createEmployeeForm">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="employee_name" class="form-label">Employee Name</label>
+                                    <input type="text" class="form-control" id="employee_name" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="emp_role" class="form-label">Role</label>
+                                    <input type="text" class="form-control" id="emp_role" required>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="email_address" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email_address" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="phone_number" class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="phone_number" pattern="[0-9]{10}"
+                                        title="Please enter a 10-digit phone number">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="hire_date" class="form-label">Hire Date</label>
+                                    <input type="date" class="form-control" id="hire_date" required
+                                        value="{{ now().strftime('%Y-%m-%d') }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="manager_id" class="form-label">Manager</label>
+                                    <select class="form-select" id="manager_id">
+                                        <option value="">No Manager</option>
+                                        {% for manager in managers %}
+                                        <option value="{{ manager.employee_id }}">{{ manager.employee_name }} (ID: {{
+                                            manager.employee_id }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="employee_type" class="form-label">Employee Type</label>
+                                    <select class="form-select" id="employee_type" required>
+                                        <option value="">Select Type</option>
+                                        <option value="Regular">Regular</option>
+                                        <option value="Hourly">Hourly</option>
+                                        <option value="Contract">Contract</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Password</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="password" readonly>
+                                        <button class="btn btn-outline-secondary" type="button"
+                                            onclick="generatePassword()">
+                                            <i class="fas fa-sync-alt"></i> Generate
+                                        </button>
+                                    </div>
+                                    <small class="text-muted">Password will be generated as [employeeID]pass</small>
+                                </div>
+                            </div>
+
+                            <!-- Hourly Employee Fields -->
+                            <div id="hourlyFields" class="row mb-3" style="display: none;">
+                                <div class="col-md-6">
+                                    <label for="hours_worked" class="form-label">Hours Worked</label>
+                                    <input type="number" class="form-control" id="hours_worked" min="0" step="0.1">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="hourly_wages" class="form-label">Hourly Wage</label>
+                                    <input type="number" step="0.01" class="form-control" id="hourly_wages" min="0">
+                                </div>
+                            </div>
+
+                            <!-- Contract Employee Fields -->
+                            <div id="contractFields" class="row mb-3" style="display: none;">
+                                <div class="col-md-4">
+                                    <label for="contract_id" class="form-label">Contract ID</label>
+                                    <input type="text" class="form-control" id="contract_id" pattern="[A-Za-z0-9-]+"
+                                        title="Alphanumeric characters and hyphens only">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="contract_start_date" class="form-label">Contract Start Date</label>
+                                    <input type="date" class="form-control" id="contract_start_date">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="contract_end_date" class="form-label">Contract End Date</label>
+                                    <input type="date" class="form-control" id="contract_end_date">
+                                </div>
+                                <div class="col-md-12 mt-2">
+                                    <label for="salary" class="form-label">Salary</label>
+                                    <input type="number" step="0.01" class="form-control" id="salary" min="0">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary-custom"
+                            onclick="validateAndCreateEmployee()">Create</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Employee Modal -->
+        <div class="modal fade" id="editEmployeeModal" tabindex="-1" aria-labelledby="editEmployeeModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editEmployeeModalLabel">Edit Employee</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editEmployeeForm">
+                            <input type="hidden" id="edit_employee_id">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="edit_employee_name" class="form-label">Employee Name</label>
+                                    <input type="text" class="form-control" id="edit_employee_name" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit_emp_role" class="form-label">Role</label>
+                                    <input type="text" class="form-control" id="edit_emp_role" required>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="edit_email_address" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="edit_email_address" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit_phone_number" class="form-label">Phone Number</label>
+                                    <input type="tel" class="form-control" id="edit_phone_number">
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="edit_hire_date" class="form-label">Hire Date</label>
+                                    <input type="date" class="form-control" id="edit_hire_date" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit_employee_type" class="form-label">Employee Type</label>
+                                    <select class="form-select" id="edit_employee_type" required>
+                                        <option value="">Select Type</option>
+                                        <option value="Regular">Regular</option>
+                                        <option value="Hourly">Hourly</option>
+                                        <option value="Contract">Contract</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Hourly Employee Fields -->
+                            <div id="editHourlyFields" class="row mb-3" style="display: none;">
+                                <div class="col-md-6">
+                                    <label for="edit_hours_worked" class="form-label">Hours Worked</label>
+                                    <input type="number" class="form-control" id="edit_hours_worked">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="edit_hourly_wages" class="form-label">Hourly Wage</label>
+                                    <input type="number" step="1" class="form-control" id="edit_hourly_wages">
+                                </div>
+                            </div>
+
+                            <!-- Contract Employee Fields -->
+                            <div id="editContractFields" class="row mb-3" style="display: none;">
+                                <div class="col-md-4">
+                                    <label for="edit_contract_start_date" class="form-label">Contract Start
+                                        Date</label>
+                                    <input type="date" class="form-control" id="edit_contract_start_date">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="edit_contract_end_date" class="form-label">Contract End Date</label>
+                                    <input type="date" class="form-control" id="edit_contract_end_date">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="edit_salary" class="form-label">Salary</label>
+                                    <input type="number" step="0.01" class="form-control" id="edit_salary">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary-custom" onclick="updateEmployee()">Save
+                            Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Search functionality -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <select id="searchAttribute" class="form-select">
+                    <option value="employee_id">Employee ID</option>
+                    <option value="employee_name">Employee Name</option>
+                    <option value="emp_role">Role</option>
+                    <option value="email_address">Email</option>
+                    <option value="phone_number">Phone</option>
+                    <option value="employee_type">Employee Type</option>
+                </select>
+            </div>
+            <div class="col-md-7">
+                <div class="input-group">
+                    <input type="text" id="searchValue" class="form-control" placeholder="Search...">
+                    <button class="btn btn-primary-custom" onclick="searchEmployees()">
+                        <i class="fas fa-search me-1"></i> Search
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Role</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Phone</th>
+                        <th scope="col">Hire Date</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Delete</th>
+                    </tr>
+                </thead>
+                <tbody id="employeesTable">
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <span class="visually-hidden">Loading...</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        fetchEmployees();
+
+        // Set today's date as default for hire date
+        document.getElementById('hire_date').valueAsDate = new Date();
+
+        // Generate initial password placeholder
+        generatePassword();
+    });
+
+    function generatePassword() {
+        // This will be updated with the actual employee ID after creation
+        document.getElementById('password').value = '[ID]pass';
+    }
+
+    function validateAndCreateEmployee() {
+        // Validate basic employee info
+        const employeeName = document.getElementById('employee_name').value;
+        const empRole = document.getElementById('emp_role').value;
+        const email = document.getElementById('email_address').value;
+        const hireDate = document.getElementById('hire_date').value;
+        const employeeType = document.getElementById('employee_type').value;
+
+        if (!employeeName || !empRole || !email || !hireDate || !employeeType) {
+            alert('Please fill all required fields');
+            return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            alert('Please enter a valid email address');
+            return;
+        }
+
+        // Validate phone number if provided
+        const phoneNumber = document.getElementById('phone_number').value;
+        if (phoneNumber && !/^\d{10}$/.test(phoneNumber)) {
+            alert('Please enter a valid 10-digit phone number');
+            return;
+        }
+
+        // Validate employee type specific fields
+        if (employeeType === 'Hourly') {
+            const hoursWorked = parseFloat(document.getElementById('hours_worked').value);
+            const hourlyWages = parseFloat(document.getElementById('hourly_wages').value);
+
+            if (isNaN(hoursWorked) || hoursWorked < 0) {
+                alert('Please enter valid hours worked (must be positive number)');
+                return;
+            }
+
+            if (isNaN(hourlyWages) || hourlyWages <= 0) {
+                alert('Please enter valid hourly wage (must be positive number)');
+                return;
+            }
+        }
+        else if (employeeType === 'Contract') {
+            const contractId = document.getElementById('contract_id').value;
+            const startDate = document.getElementById('contract_start_date').value;
+            const endDate = document.getElementById('contract_end_date').value;
+            const salary = parseFloat(document.getElementById('salary').value);
+
+            if (!contractId) {
+                alert('Please enter contract ID');
+                return;
+            }
+
+            if (!startDate || !endDate) {
+                alert('Please enter both contract start and end dates');
+                return;
+            }
+
+            if (new Date(startDate) >= new Date(endDate)) {
+                alert('Contract end date must be after start date');
+                return;
+            }
+
+            if (isNaN(salary) || salary <= 0) {
+                alert('Please enter valid salary (must be positive number)');
+                return;
+            }
+        }
+
+        // If all validations pass, create the employee
+        createEmployee();
+    }
+
+    // Show/hide fields based on employee type
+    document.getElementById('employee_type').addEventListener('change', function () {
+        const type = this.value;
+        document.getElementById('hourlyFields').style.display = type === 'Hourly' ? 'block' : 'none';
+        document.getElementById('contractFields').style.display = type === 'Contract' ? 'block' : 'none';
+
+        // Set today's date as default for contract start date
+        if (type === 'Contract') {
+            document.getElementById('contract_start_date').valueAsDate = new Date();
+        }
+    });
+
+    function createEmployee() {
+        const formData = {
+            employee_name: document.getElementById('employee_name').value,
+            emp_role: document.getElementById('emp_role').value,
+            email_address: document.getElementById('email_address').value,
+            phone_number: document.getElementById('phone_number').value,
+            hire_date: document.getElementById('hire_date').value,
+            manager_id: document.getElementById('manager_id').value || null,
+            password: document.getElementById('password').value,
+            employee_type: document.getElementById('employee_type').value
+        };
+
+        // Add type-specific fields
+        if (formData.employee_type === 'Hourly') {
+            formData.hours_worked = document.getElementById('hours_worked').value;
+            formData.hourly_wages = document.getElementById('hourly_wages').value;
+        } else if (formData.employee_type === 'Contract') {
+            formData.contract_id = document.getElementById('contract_id').value;
+            formData.contract_start_date = document.getElementById('contract_start_date').value;
+            formData.contract_end_date = document.getElementById('contract_end_date').value;
+            formData.salary = document.getElementById('salary').value;
+        }
+
+        fetch('/api/manager/employees', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    // Update password field with actual employee ID
+                    document.getElementById('password').value = data.employee_id + 'pass';
+
+                    // Show success message with password info
+                    alert(`Employee created successfully!\nEmployee ID: ${data.employee_id}\nPassword: ${data.employee_id}pass`);
+
+                    // Close modal and refresh table
+                    bootstrap.Modal.getInstance(document.getElementById('createEmployeeModal')).hide();
+                    fetchEmployees();
+                    // Reset form
+                    document.getElementById('createEmployeeForm').reset();
+                    // Regenerate password placeholder
+                    generatePassword();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to create employee');
+            });
+    }
+    function openEditModal(employeeId) {
+        fetch(`/api/manager/employees/${employeeId}`)
+            .then(response => response.json())
+            .then(employee => {
+                // Populate form fields
+                document.getElementById('edit_employee_id').value = employee.employee_id;
+                document.getElementById('edit_employee_name').value = employee.employee_name;
+                document.getElementById('edit_emp_role').value = employee.emp_role;
+                document.getElementById('edit_email_address').value = employee.email_address;
+                document.getElementById('edit_phone_number').value = employee.phone_number;
+                document.getElementById('edit_hire_date').value = employee.hire_date;
+                document.getElementById('edit_employee_type').value = employee.employee_type;
+
+                // Trigger change event to show/hide appropriate fields
+                document.getElementById('edit_employee_type').dispatchEvent(new Event('change'));
+
+                // Populate type-specific fields if available
+                if (employee.employee_type === 'Hourly' && employee.hours_worked && employee.hourly_wages) {
+                    document.getElementById('edit_hours_worked').value = employee.hours_worked;
+                    document.getElementById('edit_hourly_wages').value = employee.hourly_wages;
+                } else if (employee.employee_type === 'Contract' && employee.contract_start_date && employee.contract_end_date && employee.salary) {
+                    document.getElementById('edit_contract_start_date').value = employee.contract_start_date;
+                    document.getElementById('edit_contract_end_date').value = employee.contract_end_date;
+                    document.getElementById('edit_salary').value = employee.salary;
+                }
+
+                // Show modal
+                const editModal = new bootstrap.Modal(document.getElementById('editEmployeeModal'));
+                editModal.show();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to load employee data');
+            });
+    }
+
+    function updateEmployee() {
+        const employeeId = document.getElementById('edit_employee_id').value;
+        const formData = {
+            employee_name: document.getElementById('edit_employee_name').value,
+            emp_role: document.getElementById('edit_emp_role').value,
+            email_address: document.getElementById('edit_email_address').value,
+            phone_number: document.getElementById('edit_phone_number').value,
+            hire_date: document.getElementById('edit_hire_date').value,
+            employee_type: document.getElementById('edit_employee_type').value
+        };
+
+        // Add type-specific fields
+        if (formData.employee_type === 'Hourly') {
+            formData.hours_worked = document.getElementById('edit_hours_worked').value;
+            formData.hourly_wages = document.getElementById('edit_hourly_wages').value;
+        } else if (formData.employee_type === 'Contract') {
+            formData.contract_start_date = document.getElementById('edit_contract_start_date').value;
+            formData.contract_end_date = document.getElementById('edit_contract_end_date').value;
+            formData.salary = document.getElementById('edit_salary').value;
+        }
+
+        fetch(`/api/manager/employees/${employeeId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    // Close modal and refresh table
+                    bootstrap.Modal.getInstance(document.getElementById('editEmployeeModal')).hide();
+                    fetchEmployees();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update employee');
+            });
+    }
+
+    function fetchEmployees() {
+        // Show loading state
+        const tableBody = document.getElementById('employeesTable');
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        // Fetch employees
+        fetch('/api/manager/employees')
+            .then(response => response.json())
+            .then(data => {
+                tableBody.innerHTML = ''; // Clear loading state
+
+                if (data.error) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center text-danger py-4">
+                                Error loading employees: ${data.error}
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                if (data.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                No employees found
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                data.forEach(employee => {
+                    const deleteButton = employee.is_valid ? `
+                        <button class="btn btn-sm btn-danger" onclick="deactivateEmployee(${employee.employee_id})">
+                            <i class="fas fa-times"></i> Delete
+                        </button>
+                    ` : '';
+
+                    const row = `
+                        <tr id="employee-${employee.employee_id}">
+                            <td>${employee.employee_id}</td>
+                            <td>${employee.employee_name}</td>
+                            <td>${employee.emp_role || 'N/A'}</td>
+                            <td>${employee.email_address || 'N/A'}</td>
+                            <td>${employee.phone_number || 'N/A'}</td>
+                            <td>${employee.hire_date || 'N/A'}</td>
+                            <td>${employee.employee_type || 'Regular'}</td>
+                            <td>${deleteButton}</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching employees:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-danger py-4">
+                            Error loading employees. Please try again.
+                        </td>
+                    </tr>
+                `;
+            });
+    }
+
+    function searchEmployees() {
+        const searchAttribute = document.getElementById('searchAttribute').value;
+        const searchValue = document.getElementById('searchValue').value;
+
+        // Show loading state
+        const tableBody = document.getElementById('employeesTable');
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (searchValue) {
+            params.append('search_by', searchAttribute);
+            params.append('search_value', searchValue);
+        }
+
+        // Fetch employees with search parameters
+        fetch(`/api/manager/employees?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                displayEmployees(data);
+            })
+            .catch(error => {
+                console.error('Error searching employees:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-danger py-4">
+                            Error searching employees. Please try again.
+                        </td>
+                    </tr>
+                `;
+            });
+    }
+
+    function displayEmployees(data) {
+        const tableBody = document.getElementById('employeesTable');
+        tableBody.innerHTML = '';
+
+        if (data.error) {
+            tableBody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center text-danger py-4">
+                    Error loading employees: ${data.error}
+                </td>
+            </tr>
+        `;
+            return;
+        }
+
+        if (data.length === 0) {
+            tableBody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center text-muted py-4">
+                    No employees found matching your criteria
+                </td>
+            </tr>
+        `;
+            return;
+        }
+
+        data.forEach(employee => {
+            const deleteButton = employee.is_valid ? `
+            <button class="btn btn-sm btn-danger me-1" onclick="deactivateEmployee(${employee.employee_id})">
+                <i class="fas fa-times"></i> Delete
+            </button>
+        ` : '';
+
+            const editButton = employee.is_valid ? `
+            <button class="btn btn-sm btn-primary" onclick="openEditModal(${employee.employee_id})">
+                <i class="fas fa-edit"></i> Edit
+            </button>
+        ` : '';
+
+            const row = `
+            <tr id="employee-${employee.employee_id}">
+                <td>${employee.employee_id}</td>
+                <td>${employee.employee_name}</td>
+                <td>${employee.emp_role || 'N/A'}</td>
+                <td>${employee.email_address || 'N/A'}</td>
+                <td>${employee.phone_number || 'N/A'}</td>
+                <td>${employee.hire_date || 'N/A'}</td>
+                <td>${employee.employee_type || 'Regular'}</td>
+                <td>
+                    ${deleteButton}
+                    ${editButton}
+                </td>
+            </tr>
+        `;
+            tableBody.innerHTML += row;
+        });
+    }
+    function deactivateEmployee(employeeId) {
+        if (confirm('Are you sure you want to delete this employee? This will also remove them from any hourly or contract employee records.')) {
+            fetch(`/api/manager/employees/${employeeId}`, {
+                method: 'DELETE'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.message) {
+                        fetchEmployees(); // Refresh the table
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to delete'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to delete employee');
+                });
+        }
+    }
+</script>
+{% endblock %}
