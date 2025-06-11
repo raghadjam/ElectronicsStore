@@ -10,8 +10,11 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Suppliers</h5>
             <div>
-                <button class="btn btn-primary-custom btn-sm" onclick="fetchSuppliers()">
+                <button class="btn btn-primary-custom btn-sm me-2" onclick="fetchSuppliers()">
                     <i class="fas fa-sync-alt me-1"></i> Reload
+                </button>
+                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
+                    <i class="fas fa-plus me-1"></i> Add Supplier
                 </button>
             </div>
         </div>
@@ -19,18 +22,26 @@
             <!-- Search functionality -->
             <div class="row mb-3">
                 <div class="col-md-4">
-                    <select id="searchAttribute" class="form-select">
+                    <select id="searchAttribute" class="form-select" onchange="toggleSearchInput()">
                         <option value="supplier_id">Supplier ID</option>
                         <option value="supplier_name">Supplier Name</option>
                         <option value="email_address">Email</option>
                         <option value="phone_number">Phone</option>
+                        <option value="is_valid">Status</option>
                     </select>
                 </div>
                 <div class="col-md-6">
                     <div class="input-group">
                         <input type="text" id="searchValue" class="form-control" placeholder="Search...">
+                        <select id="statusValue" class="form-select d-none">
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
                         <button class="btn btn-primary-custom" onclick="searchSuppliers()">
                             <i class="fas fa-search me-1"></i> Search
+                        </button>
+                        <button class="btn btn-secondary" onclick="clearSearch()">
+                            <i class="fas fa-times me-1"></i> Clear
                         </button>
                     </div>
                 </div>
@@ -44,21 +55,88 @@
                             <th scope="col">Supplier Name</th>
                             <th scope="col">Email</th>
                             <th scope="col">Phone</th>
-                            <th scope="col">Delete</th>
+                            <th scope="col">Orders</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="suppliersTable">
                         <tr>
-                            <td colspan="6" class="text-center py-4">
+                            <td colspan="7" class="text-center py-4">
                                 <span class="visually-hidden">Loading...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            </td>
-            </tr>
-            </tbody>
-            </table>
         </div>
     </div>
 </div>
+
+<!-- Add Supplier Modal -->
+<div class="modal fade" id="addSupplierModal" tabindex="-1" aria-labelledby="addSupplierModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addSupplierModalLabel">Add New Supplier</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addSupplierForm">
+                    <div class="mb-3">
+                        <label for="supplierName" class="form-label">Supplier Name *</label>
+                        <input type="text" class="form-control" id="supplierName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="supplierEmail" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="supplierEmail">
+                    </div>
+                    <div class="mb-3">
+                        <label for="supplierPhone" class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control" id="supplierPhone">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addSupplier()">Save Supplier</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Supplier Modal -->
+<div class="modal fade" id="editSupplierModal" tabindex="-1" aria-labelledby="editSupplierModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editSupplierModalLabel">Edit Supplier</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editSupplierForm">
+                    <input type="hidden" id="editSupplierId">
+                    <div class="mb-3">
+                        <label for="editSupplierName" class="form-label">Supplier Name *</label>
+                        <input type="text" class="form-control" id="editSupplierName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSupplierEmail" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="editSupplierEmail">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSupplierPhone" class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control" id="editSupplierPhone">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="updateSupplier()">Update Supplier</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -66,12 +144,26 @@
         fetchSuppliers();
     });
 
+    function toggleSearchInput() {
+        const searchAttribute = document.getElementById('searchAttribute').value;
+        const searchValue = document.getElementById('searchValue');
+        const statusDropdown = document.getElementById('statusValue');
+
+        if (searchAttribute === 'is_valid') {
+            searchValue.classList.add('d-none');
+            statusDropdown.classList.remove('d-none');
+        } else {
+            searchValue.classList.remove('d-none');
+            statusDropdown.classList.add('d-none');
+        }
+    }
+
     function fetchSuppliers() {
         // Show loading state
         const tableBody = document.getElementById('suppliersTable');
         tableBody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-4">
+                <td colspan="7" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
@@ -83,56 +175,13 @@
         fetch('/api/manager/suppliers')
             .then(response => response.json())
             .then(data => {
-                tableBody.innerHTML = ''; // Clear loading state
-
-                if (data.error) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="6" class="text-center text-danger py-4">
-                                Error loading suppliers: ${data.error}
-                            </td>
-                        </tr>
-                    `;
-                    return;
-                }
-
-                if (data.length === 0) {
-                    tableBody.innerHTML = `
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
-                                No suppliers found
-                            </td>
-                        </tr>
-                    `;
-                    return;
-                }
-
-                data.forEach(supplier => {
-                    const statusClass = supplier.is_valid ? 'status-completed' : 'status-processing';
-                    const statusText = supplier.is_valid ? 'Active' : 'Inactive';
-                    const deleteButton = supplier.is_valid ? `
-                        <button class="btn btn-sm btn-danger" onclick="deactivateSupplier(${supplier.supplier_id})">
-                            <i class="fas fa-times"></i> Delete
-                        </button>
-                    ` : '';
-
-                    const row = `
-                        <tr id="supplier-${supplier.supplier_id}">
-                            <td>${supplier.supplier_id}</td>
-                            <td>${supplier.supplier_name}</td>
-                            <td>${supplier.email_address || 'N/A'}</td>
-                            <td>${supplier.phone_number || 'N/A'}</td>
-                            <td>${deleteButton}</td>
-                        </tr>
-                    `;
-                    tableBody.innerHTML += row;
-                });
+                displaySuppliers(data);
             })
             .catch(error => {
                 console.error('Error fetching suppliers:', error);
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="text-center text-danger py-4">
+                        <td colspan="7" class="text-center text-danger py-4">
                             Error loading suppliers. Please try again.
                         </td>
                     </tr>
@@ -142,24 +191,19 @@
 
     function searchSuppliers() {
         const searchAttribute = document.getElementById('searchAttribute').value;
-        let searchValue = document.getElementById('searchValue').value;
-        const statusDropdown = document.getElementById('statusValue');
+        let searchValue;
 
-        // Show/hide status dropdown based on selected attribute
         if (searchAttribute === 'is_valid') {
-            document.getElementById('searchValue').classList.add('d-none');
-            statusDropdown.classList.remove('d-none');
-            searchValue = statusDropdown.value;
+            searchValue = document.getElementById('statusValue').value;
         } else {
-            document.getElementById('searchValue').classList.remove('d-none');
-            statusDropdown.classList.add('d-none');
+            searchValue = document.getElementById('searchValue').value.trim();
         }
 
         // Show loading state
         const tableBody = document.getElementById('suppliersTable');
         tableBody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-4">
+                <td colspan="7" class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
@@ -184,12 +228,20 @@
                 console.error('Error searching suppliers:', error);
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="text-center text-danger py-4">
+                        <td colspan="7" class="text-center text-danger py-4">
                             Error searching suppliers. Please try again.
                         </td>
                     </tr>
                 `;
             });
+    }
+
+    function clearSearch() {
+        document.getElementById('searchValue').value = '';
+        document.getElementById('statusValue').value = 'true';
+        document.getElementById('searchAttribute').value = 'supplier_id';
+        toggleSearchInput();
+        fetchSuppliers();
     }
 
     function displaySuppliers(data) {
@@ -199,7 +251,7 @@
         if (data.error) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="text-center text-danger py-4">
+                    <td colspan="7" class="text-center text-danger py-4">
                         Error loading suppliers: ${data.error}
                     </td>
                 </tr>
@@ -210,7 +262,7 @@
         if (data.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-4">
+                    <td colspan="7" class="text-center text-muted py-4">
                         No suppliers found matching your criteria
                     </td>
                 </tr>
@@ -219,13 +271,23 @@
         }
 
         data.forEach(supplier => {
-            const statusClass = supplier.is_valid ? 'status-completed' : 'status-processing';
+            const statusClass = supplier.is_valid ? 'badge bg-success' : 'badge bg-danger';
             const statusText = supplier.is_valid ? 'Active' : 'Inactive';
             const deleteButton = supplier.is_valid ? `
-                <button class="btn btn-sm btn-danger" onclick="deactivateSupplier(${supplier.supplier_id})">
+                <button class="btn btn-sm btn-danger me-1" onclick="deactivateSupplier(${supplier.supplier_id})">
                     <i class="fas fa-times"></i> Delete
                 </button>
-            ` : '';
+            ` : `
+                <button class="btn btn-sm btn-success me-1" onclick="reactivateSupplier(${supplier.supplier_id})">
+                    <i class="fas fa-check"></i> Reactivate
+                </button>
+            `;
+
+            const editButton = `
+                <button class="btn btn-sm btn-primary" onclick="openEditModal(${supplier.supplier_id}, '${supplier.supplier_name}', '${supplier.email_address || ''}', '${supplier.phone_number || ''}')">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+            `;
 
             const row = `
                 <tr id="supplier-${supplier.supplier_id}">
@@ -233,18 +295,141 @@
                     <td>${supplier.supplier_name}</td>
                     <td>${supplier.email_address || 'N/A'}</td>
                     <td>${supplier.phone_number || 'N/A'}</td>
-                    <td><span class="order-status ${statusClass}">${statusText}</span></td>
-                    <td>${deleteButton}</td>
+                    <td>${supplier.order_count || 0}</td>
+                    <td><span class="${statusClass}">${statusText}</span></td>
+                    <td>
+                        <div class="d-flex">
+                            ${deleteButton}
+                            ${editButton}
+                        </div>
+                    </td>
                 </tr>
             `;
             tableBody.innerHTML += row;
         });
     }
 
+    function openEditModal(supplierId, supplierName, email, phone) {
+        document.getElementById('editSupplierId').value = supplierId;
+        document.getElementById('editSupplierName').value = supplierName;
+        document.getElementById('editSupplierEmail').value = email || '';
+        document.getElementById('editSupplierPhone').value = phone || '';
+
+        const modal = new bootstrap.Modal(document.getElementById('editSupplierModal'));
+        modal.show();
+    }
+
+    function addSupplier() {
+        const supplierName = document.getElementById('supplierName').value.trim();
+        const email = document.getElementById('supplierEmail').value.trim();
+        const phone = document.getElementById('supplierPhone').value.trim();
+
+        if (!supplierName) {
+            alert('Supplier name is required');
+            return;
+        }
+
+        fetch('/api/manager/suppliers', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                supplier_name: supplierName,
+                email_address: email || null,
+                phone_number: phone || null
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    alert('Supplier added successfully');
+                    fetchSuppliers();
+                    // Close the modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addSupplierModal'));
+                    modal.hide();
+                    // Reset the form
+                    document.getElementById('addSupplierForm').reset();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to add supplier');
+            });
+    }
+
+    function updateSupplier() {
+        const supplierId = document.getElementById('editSupplierId').value;
+        const supplierName = document.getElementById('editSupplierName').value.trim();
+        const email = document.getElementById('editSupplierEmail').value.trim();
+        const phone = document.getElementById('editSupplierPhone').value.trim();
+
+        if (!supplierName) {
+            alert('Supplier name is required');
+            return;
+        }
+
+        fetch(`/api/manager/suppliers/${supplierId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                supplier_name: supplierName,
+                email_address: email || null,
+                phone_number: phone || null
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    alert('Supplier updated successfully');
+                    fetchSuppliers();
+                    // Close the modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editSupplierModal'));
+                    modal.hide();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update supplier');
+            });
+    }
+
     function deactivateSupplier(supplierId) {
-        if (confirm('Are you sure you want to delete this supplier?')) {
+        if (confirm('Are you sure you want to delete this supplier? This will also deactivate all related pending purchase orders and order details.')) {
             fetch(`/api/manager/suppliers/${supplierId}`, {
                 method: 'DELETE'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw err; });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.message) {
+                        alert(data.message);
+                        fetchSuppliers(); // Refresh the table
+                    } else {
+                        alert('Error: ' + (data.error || 'Failed to delete'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to delete supplier: ' + (error.error || error.message || 'Unknown error'));
+                });
+        }
+    }
+
+    function reactivateSupplier(supplierId) {
+        if (confirm('Are you sure you want to reactivate this supplier?')) {
+            fetch(`/api/manager/suppliers/${supplierId}/reactivate`, {
+                method: 'PUT'
             })
                 .then(response => {
                     if (!response.ok) {
@@ -254,14 +439,15 @@
                 })
                 .then(data => {
                     if (data.message) {
+                        alert(data.message);
                         fetchSuppliers(); // Refresh the table
                     } else {
-                        alert('Error: ' + (data.error || 'Failed to delete'));
+                        alert('Error: ' + (data.error || 'Failed to reactivate'));
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Failed to delete supplier');
+                    alert('Failed to reactivate supplier');
                 });
         }
     }
