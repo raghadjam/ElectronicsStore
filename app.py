@@ -297,11 +297,79 @@ def profile():
                            rank=rank,
                            avg_order_value=avg_order_value)
 
+@app.route('/profile_update', methods=['POST'])
+def profile_update():
+    if 'customer_id' not in session:
+        flash("Please log in to update your profile.", "warning")
+        return redirect(url_for('customerlogin'))
+
+    customer_id = session['customer_id']
+    action = request.form.get('action')
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    if action == 'delete':
+        cursor.execute("UPDATE Customer SET is_valid = FALSE WHERE customer_id = %s", (customer_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        session.pop('customer_id', None)
+        flash("Your account has been deleted.", "info")
+        return redirect(url_for('home'))
+
+    elif action == 'update':
+        # Collect fields; only update if not empty
+        phone = request.form.get('phone', '').strip()
+        email = request.form.get('email', '').strip()
+        city = request.form.get('city', '').strip()
+        address = request.form.get('address', '').strip()
+
+        # Build update dynamically
+        fields = []
+        values = []
+
+        if phone:
+            fields.append("phone_number = %s")
+            values.append(phone)
+        if email:
+            fields.append("email_address = %s")
+            values.append(email)
+        if city:
+            fields.append("city = %s")
+            values.append(city)
+        if address:
+            fields.append("shipping_address = %s")
+            values.append(address)
+
+        if fields:
+            sql = f"UPDATE Customer SET {', '.join(fields)} WHERE customer_id = %s"
+            values.append(customer_id)
+            cursor.execute(sql, tuple(values))
+            conn.commit()
+            flash("Your profile has been updated.", "success")
+        else:
+            flash("No fields to update.", "warning")
+
+        cursor.close()
+        conn.close()
+        return redirect(url_for('profile'))
+
+    else:
+        cursor.close()
+        conn.close()
+        flash("Invalid action.", "error")
+        return redirect(url_for('profile'))
+
 @app.route('/logout')
 def logout():
     session.pop('customer_id', None) # Remove customer_id from session
     flash("You have been logged out.", "info")
     return redirect(url_for('home'))
+
+@app.route('/checkout-success')
+def checkout_success():
+    return render_template('checkout_success.html')
 
 @app.route('/checkout', methods=['GET', 'POST'])
 def checkout():
@@ -385,6 +453,7 @@ def checkout():
 
             conn.commit()
             flash("Payment successful and order confirmed!", "success")
+            return redirect(url_for('checkout_success'))
            
 
         # GET request: render checkout page

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <title>Contact Now</title>
+  <style>
+    .contact {
+      background: url("/static/images/contact.jpg");
+      background-size: 100% 100%;
+      padding: 90px 0;
+    }
+
+    .contact .titlepage h2 {
+      color: #fff;
+      border-bottom: 1px solid #fff;
+      padding-bottom: 10px;
+    }
+
+    .main_form {
+      padding: 70px 50px;
+      border: 2px solid #fff;
+      margin: 0 50px;
+    }
+
+    .main_form .contactus {
+      border: 2px solid #fff;
+      padding: 0 15px;
+      margin-bottom: 25px;
+      width: 100%;
+      height: 57px;
+      background: transparent;
+      color: #fff;
+      font-size: 18px;
+      font-weight: normal;
+    }
+
+    .main_form .textarea {
+      border: 2px solid #fff;
+      padding: 56px 15px 0 15px;
+      margin-bottom: 25px;
+      width: 100%;
+      height: 151px;
+      background: transparent;
+      color: #fff;
+      font-size: 18px;
+      font-weight: normal;
+      resize: none;
+    }
+
+    .main_form .send_btn {
+      font-size: 22px;
+      background-color: #7087ea;
+      color: #fff;
+      padding: 15px 0;
+      max-width: 226px;
+      width: 100%;
+      display: block;
+      margin: 30px auto 0 auto !important;
+      border-radius: 40px;
+      font-weight: 500;
+      text-transform: uppercase;
+      transition: background-color 0.5s ease-in, color 0.5s ease-in;
+      border: none;
+      cursor: pointer;
+    }
+
+    .main_form .send_btn:hover {
+      background-color: #000;
+      color: #fff;
+    }
+
+    #request *::placeholder {
+      color: #fff;
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <!-- contact -->
+  <div class="contact">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12">
+          <div class="titlepage">
+            <h2>Contact Now</h2>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-10 offset-md-1">
+          <form id="request" class="main_form">
+            <div class="row">
+              <div class="col-md-12">
+                <input class="contactus" placeholder="Name" type="text" name="Name" />
+              </div>
+              <div class="col-md-12">
+                <input class="contactus" placeholder="Email" type="email" name="Email" />
+              </div>
+              <div class="col-md-12">
+                <input class="contactus" placeholder="Phone Number" type="tel" name="Phone Number" />
+              </div>
+              <div class="col-md-12">
+                <textarea class="textarea" placeholder="Message" name="Message"></textarea>
+              </div>
+              <div class="col-md-12">
+                <button class="send_btn" type="submit">Send</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- end contact -->
+</body>
+</html>

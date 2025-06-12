@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Order Confirmed</title>
+  <style>
+    .btn-primary {
+      background-color: #7087ea; 
+      color: white;
+      padding: 10px 20px;
+      text-decoration: none;
+      border-radius: 5px;
+      display: inline-block;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .btn-primary:hover {
+      background-color: #7087ea; 
+    }
+  </style>
+</head>
+<body>
+  <div class="container pt-5 text-center">
+    <h2>Thank you for your order!</h2>
+    <p>Your payment was processed successfully.</p>
+    <a href="{{ url_for('product') }}" class="btn-primary mt-3">Back to Products</a>
+  </div>
+</body>
+</html>
