@@ -2149,7 +2149,8 @@ def check_supplier(supplier_id):
   
 @app.route('/api/manager/purchase-orders', methods=['POST'])
 def create_purchase_order():
-    """Create a new purchase order"""
+    """Create a new purchase order and update stock quantities"""
+    conn = None
     try:
         data = request.get_json()
         supplier_id = data.get('supplier_id')
@@ -2182,48 +2183,78 @@ def create_purchase_order():
         """, (supplier_id,))
         
         if not cursor.fetchone():
+            conn.rollback()
             conn.close()
             return jsonify({'error': 'Supplier does not exist or is inactive'}), 400
         
+        # Verify all products exist and are valid before proceeding
+        for product in products:
+            cursor.execute("""
+                SELECT product_id, stock_quantity, product_name
+                FROM product 
+                WHERE product_id = %s AND is_valid = TRUE
+            """, (product['product_id'],))
+            
+            product_info = cursor.fetchone()
+            if not product_info:
+                conn.rollback()
+                conn.close()
+                return jsonify({'error': f'Product ID {product["product_id"]} does not exist or is inactive'}), 400
+        
         # Create the purchase order
-        # Correct the parameter in the purchase order details insertion
         cursor.execute('''
-            INSERT INTO purchaseorderdetails (
-                purchase_order_id,
-                product_id,
-                price,
-                quantity,
+            INSERT INTO purchaseorder (
+                supplier_id,
                 employee_id,
+                order_date,
+                expected_received_date,
+                delivery_status,
                 is_valid
             )
-            VALUES (%s, %s, %s, %s, %s, TRUE)
-        ''', (purchase_order_id, product['product_id'], product['price'], product['quantity'], employee_id))
-            
+            VALUES (%s, %s, CURDATE(), %s, 'pending', TRUE)
+        ''', (supplier_id, employee_id, expected_received_date))
+        
         purchase_order_id = cursor.lastrowid
         
-        # Add products to the purchase order
+        # Add products to the purchase order and update stock quantities
         for product in products:
+            # Insert into purchase order details
             cursor.execute('''
                 INSERT INTO purchaseorderdetails (
                     purchase_order_id,
                     product_id,
                     price,
                     quantity,
-                    employee_id,
                     is_valid
                 )
                 VALUES (%s, %s, %s, %s, TRUE)
-            ''', (purchase_order_id, product['product_id'], product['price'], product['quantity'], product[1]))
+            ''', (purchase_order_id, product['product_id'], product['price'], product['quantity']))
+            
+            # Update stock quantity - increase stock when ordering
+            cursor.execute('''
+                UPDATE product 
+                SET stock_quantity = stock_quantity + %s
+                WHERE product_id = %s
+            ''', (product['quantity'], product['product_id']))
+            
+            # Verify the update was successful
+            if cursor.rowcount == 0:
+                conn.rollback()
+                conn.close()
+                return jsonify({'error': f'Failed to update stock for product ID {product["product_id"]}'}), 500
         
         conn.commit()
         conn.close()
         
         return jsonify({
-            'message': 'Purchase order created successfully',
+            'message': 'Purchase order created successfully and stock quantities updated',
             'purchase_order_id': purchase_order_id
         }), 201
     
     except ValueError as e:
+        if conn:
+            conn.rollback()
+            conn.close()
         return jsonify({'error': 'Invalid date format'}), 400
     except Exception as e:
         if conn:

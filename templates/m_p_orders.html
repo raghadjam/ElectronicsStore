@@ -27,7 +27,6 @@
                         <option value="supplier_id">Supplier ID</option>
                         <option value="employee_id">Employee ID</option>
                         <option value="delivery_status">Delivery Status</option>
-                        <option value="is_valid">Order Status</option>
                     </select>
                 </div>
                 <div class="col-md-6">
@@ -63,6 +62,7 @@
                             <th scope="col">Expected Date</th>
                             <th scope="col">Received Date</th>
                             <th scope="col"> Delivery Status</th>
+                            <th scope="col"> Delete Status</th>
                             <th scope="col">Actions</th>
                         </tr>
                     </thead>
@@ -380,12 +380,12 @@
             </button>
         `;
 
-            if (po.delivery_status === 'pending' && po.is_valid) {
+            if (po.delivery_status && po.delivery_status.toLowerCase() === 'pending' && po.is_valid) {
                 actions += `
-                <button class="btn btn-sm btn-danger ms-1" onclick="softDeletePO(${po.purchase_order_id})">
-                    <i class="fas fa-trash me-1"></i> Delete
-                </button>
-            `;
+    <button class="btn btn-sm btn-danger ms-1" onclick="softDeletePO(${po.purchase_order_id})">
+        <i class="fas fa-trash me-1"></i> Delete
+    </button>
+`;
             }
 
             if (!po.is_valid) {
@@ -716,6 +716,7 @@
         const expectedDate = document.getElementById('expectedDate').value;
         const orderDate = new Date(); // Current date (order date)
 
+        // Validate inputs
         if (!supplierId) {
             alert('Please select a supplier');
             document.getElementById('supplierId').classList.add('is-invalid');
@@ -795,14 +796,14 @@
         fetch(`/api/manager/suppliers/${supplierId}/check`)
             .then(response => response.json())
             .then(supplierCheck => {
-                if (supplierCheck.error || !supplierCheck.exists || !supplierCheck.is_valid) {
+                if (!supplierCheck.exists || !supplierCheck.is_valid) {
                     throw new Error('Supplier does not exist or is inactive');
                 }
 
                 // If supplier is valid, proceed with creating the order
                 const data = {
                     supplier_id: supplierId,
-                    employee_id: 1, // Assuming this is the manager's ID (should be set from session in real app)
+                    employee_id: 1, // This should be set from the session in a real app
                     expected_received_date: expectedDate,
                     products: products
                 };
@@ -815,12 +816,13 @@
                     body: JSON.stringify(data)
                 });
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    throw new Error(data.error);
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.error || 'Failed to create purchase order'); });
                 }
-
+                return response.json();
+            })
+            .then(data => {
                 // Close the modal and refresh the data
                 bootstrap.Modal.getInstance(document.getElementById('createPurchaseOrderModal')).hide();
                 fetchPurchaseOrders();
