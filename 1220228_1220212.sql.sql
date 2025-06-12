@@ -327,6 +327,8 @@ VALUES
 SELECT * FROM electronics_store.OrderDetails;
 SELECT * FROM electronics_store.Order;
 SELECT * FROM electronics_store.Payment;
+SELECT * FROM electronics_store.Customer;
+
 
 
 

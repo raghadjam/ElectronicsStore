@@ -236,19 +236,49 @@
         </div>
 
         <div class="counter">
-            <div class="count-data">
-                <h6>{{ total_customers }}</h6>
-                <p>Total Customers</p>
-            </div>
-            <div class="count-data">
-                <h6>{{ total_orders }}</h6>
-                <p>Total Orders</p>
-            </div>
-            <div class="count-data">
-                <h6>{{ customer[6] }}</h6>
-                <p>Your Orders</p>
-            </div>
-        </div>
+    <div class="count-data">
+        <h6>{{ user_order_count }}</h6>
+        <p>Your Total Orders</p>
+    </div>
+    <div class="count-data">
+        <h6>${{ '%.2f' | format(total_spent) }}</h6>
+        <p>Total Amount Spent</p>
+    </div>
+    <div class="count-data">
+        <h6>{{ last_order_date or "N/A" }}</h6>
+        <p>Last Order Date</p>
+    </div>
+    <div class="count-data">
+        <h6>{{ total_items_ordered }}</h6>
+        <p>Total Items Ordered</p>
+    </div>
+    <div class="count-data">
+        <h6>{{ favorite_category }}</h6>
+        <p>Favorite Category</p>
+    </div>
+    <div class="count-data">
+        <h6>{{ unique_products }}</h6>
+        <p>Unique Products Bought</p>
+    </div>
+    <div class="count-data">
+        <h6>{{ top_product_name }}</h6>
+        <p>Most Purchased Product</p>
+    </div>
+    <div class="count-data">
+    <h6>{{ rank }}</h6>
+    <p>Your Spending Rank</p>
+</div>
+
+    <div class="count-data">
+        <h6>${{ '%.2f' | format(avg_order_value) }}</h6>
+        <p>Avg. Order Value</p>
+    </div>
+    <div class="count-data">
+        <h6>{{ customer[6] }}</h6>
+        <p>Your Orders</p>
+    </div>
+</div>
+
     </div>
 </section>
 

@@ -158,7 +158,7 @@ def customerlogin():
 
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM Customer WHERE customer_id = %s AND Customer_password = %s", (customer_id, password))
+        cursor.execute("SELECT * FROM Customer WHERE customer_id = %s AND Customer_password = %s AND is_valid = TRUE", (customer_id, password))
         customer = cursor.fetchone()
         conn.close()
 
@@ -174,42 +174,128 @@ def customerlogin():
 
 @app.route('/profile')
 def profile():
-    # Check if customer_id is in session (i.e., user is logged in)
     if 'customer_id' not in session:
         flash("Please log in to view your profile.", "warning")
-        return redirect(url_for('customerlogin'))  # Redirect to login if not logged in
+        return redirect(url_for('customerlogin'))
 
     customer_id = session['customer_id']
-
-    # Connect to MySQL database
-    conn =get_connection()
+    conn = get_connection()
     cursor = conn.cursor()
 
-    # Get customer details
+    # 1. Customer basic info
     cursor.execute("SELECT * FROM Customer WHERE customer_id = %s", (customer_id,))
     customer = cursor.fetchone()
 
-    # Get total number of customers
-    cursor.execute("SELECT COUNT(*) FROM Customer")
-    total_customers = cursor.fetchone()[0]
-
-    # Get total orders
-    cursor.execute("SELECT SUM(order_count) FROM Customer")
-    total_orders = cursor.fetchone()[0]
-
-    cursor.close()
-    conn.close()
-
     if not customer:
-        # If customer not found in DB, logout and redirect
         session.pop('customer_id', None)
         flash("User not found. Please log in again.", "error")
         return redirect(url_for('customerlogin'))
 
+    # 2. Total orders made by the customer
+    cursor.execute("SELECT COUNT(*) FROM `Order` WHERE customer_id = %s AND is_valid = TRUE", (customer_id,))
+    user_order_count = cursor.fetchone()[0]
+
+    # 3. Total amount spent by the customer
+    cursor.execute("""
+        SELECT SUM(od.price * od.quantity)
+        FROM `Order` o
+        JOIN OrderDetails od ON o.order_id = od.order_id
+        WHERE o.customer_id = %s AND o.is_valid = TRUE
+    """, (customer_id,))
+    total_spent = cursor.fetchone()[0] or 0
+
+    # 4. Most recent order date
+    cursor.execute("SELECT MAX(order_date) FROM `Order` WHERE customer_id = %s AND is_valid = TRUE", (customer_id,))
+    last_order_date = cursor.fetchone()[0]
+
+    # 5. Number of items ordered (across all orders)
+    cursor.execute("""
+        SELECT SUM(od.quantity)
+        FROM `Order` o
+        JOIN OrderDetails od ON o.order_id = od.order_id
+        WHERE o.customer_id = %s AND o.is_valid = TRUE
+    """, (customer_id,))
+    total_items_ordered = cursor.fetchone()[0] or 0
+
+    # 6. Favorite product category (most frequently ordered)
+    cursor.execute("""
+        SELECT p.category, COUNT(*) AS freq
+        FROM `Order` o
+        JOIN OrderDetails od ON o.order_id = od.order_id
+        JOIN Product p ON od.product_id = p.product_id
+        WHERE o.customer_id = %s AND o.is_valid = TRUE
+        GROUP BY p.category
+        ORDER BY freq DESC
+        LIMIT 1
+    """, (customer_id,))
+    favorite_category = cursor.fetchone()
+    favorite_category = favorite_category[0] if favorite_category else "N/A"
+
+    # 7. Total number of different products bought
+    cursor.execute("""
+        SELECT COUNT(DISTINCT od.product_id)
+        FROM `Order` o
+        JOIN OrderDetails od ON o.order_id = od.order_id
+        WHERE o.customer_id = %s AND o.is_valid = TRUE
+    """, (customer_id,))
+    unique_products = cursor.fetchone()[0] or 0
+
+    # 8. Most purchased product
+    cursor.execute("""
+        SELECT p.product_name, SUM(od.quantity) AS total
+        FROM `Order` o
+        JOIN OrderDetails od ON o.order_id = od.order_id
+        JOIN Product p ON od.product_id = p.product_id
+        WHERE o.customer_id = %s AND o.is_valid = TRUE
+        GROUP BY p.product_name
+        ORDER BY total DESC
+        LIMIT 1
+    """, (customer_id,))
+    top_product = cursor.fetchone()
+    top_product_name = top_product[0] if top_product else "N/A"
+
+ # 9. Customer's rank by total spending
+    cursor.execute("""
+    SELECT COUNT(DISTINCT total_spent) + 1 AS customer_rank FROM (
+        SELECT o.customer_id, SUM(od.price * od.quantity) AS total_spent
+        FROM `Order` o
+        JOIN OrderDetails od ON o.order_id = od.order_id
+        WHERE o.is_valid = TRUE
+        GROUP BY o.customer_id
+    ) AS customer_totals
+    WHERE total_spent > %s
+    """, (total_spent,))
+    rank = cursor.fetchone()[0]
+
+
+
+    # 10. Average order value
+    cursor.execute("""
+        SELECT AVG(sub.total)
+        FROM (
+            SELECT SUM(od.price * od.quantity) AS total
+            FROM `Order` o
+            JOIN OrderDetails od ON o.order_id = od.order_id
+            WHERE o.customer_id = %s AND o.is_valid = TRUE
+            GROUP BY o.order_id
+        ) AS sub
+    """, (customer_id,))
+    avg_order_value = cursor.fetchone()[0] or 0
+
+    cursor.close()
+    conn.close()
+
     return render_template('profile.html',
                            customer=customer,
-                           total_customers=total_customers,
-                           total_orders=total_orders)
+                           user_order_count=user_order_count,
+                           total_spent=total_spent,
+                           last_order_date=last_order_date,
+                           total_items_ordered=total_items_ordered,
+                           favorite_category=favorite_category,
+                           unique_products=unique_products,
+                           top_product_name=top_product_name,
+                           rank=rank,
+                           avg_order_value=avg_order_value)
 
 @app.route('/logout')
 def logout():
@@ -275,12 +361,27 @@ def checkout():
                 "UPDATE `Order` SET status = 'confirmed', order_date = %s WHERE order_id = %s",
                 (date.today(), order_id)
             )
+            # Mark order details as invalid (is_valid = 0) after purchase
+            cursor.execute("""
+                UPDATE OrderDetails SET is_valid = 0 WHERE order_id = %s
+            """, (order_id,))
+
+            cursor.execute(
+            "INSERT INTO Invoice (order_id, invoice_date) VALUES (%s, %s)",
+            (order_id, date.today())
+            )
+            invoice_id = cursor.lastrowid  # get the new invoice_id
 
             # Insert payment
             cursor.execute("""
-                INSERT INTO Payment (invoice_id, payment_date, amount_paid, payment_method)
-                VALUES (%s, %s, %s, %s)
-            """, (order_id, date.today(), amount_paid, payment_method))
+            INSERT INTO Payment (invoice_id, payment_date, amount_paid, payment_method)
+            VALUES (%s, %s, %s, %s)
+            """, (invoice_id, date.today(), amount_paid, payment_method))
+            # Increment order_count for the customer
+            cursor.execute("""
+                UPDATE Customer SET order_count = order_count + 1 WHERE customer_id = %s
+            """, (customer_id,))
+
 
             conn.commit()
             flash("Payment successful and order confirmed!", "success")
@@ -404,6 +505,10 @@ def add_to_cart():
             cursor.execute("INSERT INTO OrderDetails (order_id, product_id, quantity, price) VALUES (%s, %s, %s, %s)",
                            (order_id, product_id, quantity, product_price))
             flash(f"{product_info['product_name']} added to cart!", "success")
+        
+        cursor.execute("""
+        UPDATE Product SET stock_quantity = stock_quantity - %s WHERE product_id = %s
+        """, (quantity, product_id))
         
         conn.commit()
         return redirect(url_for('cart'))
