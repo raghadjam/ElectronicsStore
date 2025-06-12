@@ -1,7 +1,9 @@
-from datetime import date
-from flask import Flask, flash, render_template, request, redirect, url_for, session
-import mysql
+from datetime import date, datetime
+from flask import Flask, flash, render_template, request, redirect, url_for, session, jsonify
+import mysql, re
 from db import get_connection
+from mysql.connector import Error 
+
 
 app = Flask(__name__)
 app.secret_key = '1220212'
@@ -376,7 +378,6 @@ def add_to_cart():
         cursor.execute("SELECT order_id FROM `Order` WHERE customer_id = %s AND status = 'cart'", (customer_id,))
         current_cart_order = cursor.fetchone()
         order_id = None
-        print(order_id)
 
         if current_cart_order:
             order_id = current_cart_order['order_id']
@@ -446,7 +447,6 @@ def cart():
             """, (order_id,))
 
             cart_items = cursor.fetchall()
-            print(cart_items)
             total_price = sum(item['price'] * item['quantity'] for item in cart_items)
 
         return render_template('cart.html', cart_items=cart_items, total_price=total_price)
@@ -461,13 +461,2181 @@ def cart():
             conn.close()
 
 
-@app.route('/managerlog')
+######################## Manager ###################3
+@app.route('/managerlog', methods=['GET', 'POST'])
 def managerlog():
+    if request.method == 'POST':
+        manager_id = request.form['manager_id']
+        password = request.form['password']
+
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Check if this ID belongs to a manager (someone who manages others)
+        query = """
+            SELECT * FROM Employee 
+            WHERE employee_id = %s AND (
+            emp_role = 'Manager' OR emp_role = 'Assistant Manager') 
+            AND employee_id IN (
+                SELECT DISTINCT manager_id FROM Employee WHERE manager_id IS NOT NULL
+            )
+        """
+        cursor.execute(query, (manager_id,))
+        manager = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if manager:
+            if password == '1234':  
+                return redirect(url_for('manager', employee_id=manager_id))
+            else:
+                return redirect(url_for('managerlog'))
+        else:
+            return redirect(url_for('managerlog'))
+
     return render_template('managerlog.html')
 
-@app.route('/emplog')
+@app.route('/manager/<int:employee_id>')
+@app.route('/manager/<int:employee_id>/Mprofile') 
+def manager(employee_id, Mprofile=False):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Get basic employee info with manager details
+    cursor.execute("""
+        SELECT e.*, m.employee_name as manager_name, m.email_address as manager_email
+        FROM Employee e
+        LEFT JOIN Employee m ON e.manager_id = m.employee_id
+        WHERE e.employee_id = %s
+    """, (employee_id,))
+    employee = cursor.fetchone()
+    
+    if not employee:
+        conn.close()
+        return "Employee not found", 404
+    
+    # Only fetch detailed employment data if we're viewing the Mprofile
+    hourly_data = None
+    contract_data = None
+    
+    if request.path.endswith('/Mprofile') or request.args.get('Mprofile'):
+        cursor.execute("SELECT * FROM HourlyEmployee WHERE employee_id = %s", (employee_id,))
+        hourly_data = cursor.fetchone()
+        
+        cursor.execute("SELECT * FROM ContractEmployee WHERE employee_id = %s", (employee_id,))
+        contract_data = cursor.fetchone()
+    
+    conn.close()
+    
+    # Determine which template to render
+    if request.path.endswith('/Mprofile') or request.args.get('Mprofile'):
+        return render_template('manager.html', 
+                            employee=employee,
+                            hourly_data=hourly_data,
+                            contract_data=contract_data,
+                            show_profile=True)
+    else:
+        return render_template('manager.html', employee=employee)
+
+@app.route('/m_customers/')
+def m_customers():
+    """Render the customers management page"""
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT * FROM Employee", )
+    employee = cursor.fetchone()
+    conn.close()
+    
+    if not employee:
+        return redirect(url_for('emplog'))
+    
+    return render_template('m_customers.html', employee=employee)
+
+@app.route('/api/manager/customers')
+def get_all_customers():
+    """Get all customers with optional search filtering"""
+    try:
+        search_by = request.args.get('search_by')
+        search_value = request.args.get('search_value')
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        base_query = '''
+            SELECT 
+                customer_id, 
+                customer_name, 
+                email_address, 
+                phone_number,
+                city,
+                order_count,
+                is_valid
+            FROM customer
+            WHERE is_valid = TRUE
+        '''
+        
+        # Add search conditions
+        conditions = []
+        params = []
+        
+        if search_by and search_value:
+            if search_by == 'customer_id':
+                conditions.append("customer_id = %s")
+                params.append(int(search_value))
+            elif search_by == 'customer_name':
+                conditions.append("customer_name LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'email_address':
+                conditions.append("email_address LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'phone_number':
+                conditions.append("phone_number LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'city':
+                conditions.append("city LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'is_valid':
+                # Convert to boolean (1 for true/active, 0 for false/inactive)
+                is_valid = 1 if search_value.lower() in ['true', '1', 'active'] else 0
+                conditions.append("is_valid = %s")
+                params.append(is_valid)
+        
+        # Build final query
+        query = base_query
+        if conditions:
+            query += " AND " + " AND ".join(conditions)
+        query += " ORDER BY customer_id ASC"
+        
+        cursor.execute(query, params)
+        customers = cursor.fetchall()
+        conn.close()
+        
+        customers_list = []
+        for customer in customers:
+            customers_list.append({
+                'customer_id': customer['customer_id'],
+                'customer_name': customer['customer_name'],
+                'email_address': customer['email_address'],
+                'phone_number': customer['phone_number'],
+                'city': customer['city'],
+                'order_count': customer['order_count'],
+                'is_valid': bool(customer['is_valid'])
+            })
+        
+        return jsonify(customers_list)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/manager/customers/<int:customer_id>', methods=['DELETE'])
+def deactivate_customer(customer_id):
+    """Delete a customer by setting is_valid to FALSE"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Soft delete by setting is_valid to FALSE
+        cursor.execute("""
+            UPDATE customer 
+            SET is_valid = FALSE 
+            WHERE customer_id = %s
+        """, (customer_id,))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Customer not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Customer deleted successfully',
+            'customer_id': customer_id
+        })
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/m_employees/')
+def m_employees():
+    """Render the employees management page"""
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Get list of all managers for dropdown
+    cursor.execute("""
+        SELECT employee_id, employee_name 
+        FROM employee 
+        WHERE is_valid = TRUE AND emp_role LIKE '%Manager%'
+        ORDER BY employee_name
+    """)
+    managers = cursor.fetchall()
+    
+    conn.close()
+    
+    return render_template('m_employees.html')
+
+@app.route('/api/manager/employees', methods=['POST'])
+def create_employee():
+    """Create a new employee with optional hourly/contract details"""
+    conn = None
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['employee_name', 'emp_role', 'email_address', 'hire_date', 'employee_type']
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Validate email format
+        if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', data['email_address']):
+            return jsonify({'error': 'Invalid email format'}), 400
+        
+        # Validate phone number if provided
+        if 'phone_number' in data and data['phone_number'] and not re.match(r'^\d{10}$', data['phone_number']):
+            return jsonify({'error': 'Phone number must be 10 digits'}), 400
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Start transaction
+        cursor.execute("START TRANSACTION")
+        
+        # Generate password (employeeID + 'pass')
+        # We'll update this after we know the employee ID
+        temp_password = 'temp_password'
+        
+        # Insert into employee table
+        cursor.execute("""
+            INSERT INTO employee (
+                employee_name, 
+                emp_role, 
+                phone_number, 
+                email_address, 
+                hire_date, 
+                manager_id, 
+                password, 
+                is_valid
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            data['employee_name'],
+            data['emp_role'],
+            data.get('phone_number'),
+            data['email_address'],
+            data['hire_date'],
+            data.get('manager_id'),
+            temp_password,
+            1  # is_valid
+        ))
+        
+        employee_id = cursor.lastrowid
+        
+        # Now set the actual password
+        actual_password = f"{employee_id}pass"
+        cursor.execute("""
+            UPDATE employee 
+            SET password = %s 
+            WHERE employee_id = %s
+        """, (actual_password, employee_id))
+        
+        # Handle employee type specific tables
+        if data['employee_type'].lower() == 'hourly':
+            if 'hours_worked' not in data or 'hourly_wages' not in data:
+                conn.rollback()
+                return jsonify({'error': 'Missing required fields for hourly employee'}), 400
+                
+            if float(data['hours_worked']) < 0 or float(data['hourly_wages']) <= 0:
+                conn.rollback()
+                return jsonify({'error': 'Hours worked must be >= 0 and hourly wage must be > 0'}), 400
+                
+            cursor.execute("""
+                INSERT INTO hourlyemployee (
+                    employee_id, 
+                    hours_worked, 
+                    hourly_wages, 
+                    is_valid
+                ) VALUES (%s, %s, %s, %s)
+            """, (
+                employee_id,
+                data['hours_worked'],
+                data['hourly_wages'],
+                1
+            ))
+            
+        elif data['employee_type'].lower() == 'contract':
+            required_contract_fields = ['contract_id', 'contract_start_date', 'contract_end_date', 'salary']
+            for field in required_contract_fields:
+                if field not in data or not data[field]:
+                    conn.rollback()
+                    return jsonify({'error': f'Missing required field for contract employee: {field}'}), 400
+            
+            # Validate contract dates
+            start_date = datetime.strptime(data['contract_start_date'], '%Y-%m-%d')
+            end_date = datetime.strptime(data['contract_end_date'], '%Y-%m-%d')
+            if start_date >= end_date:
+                conn.rollback()
+                return jsonify({'error': 'Contract end date must be after start date'}), 400
+                
+            if float(data['salary']) <= 0:
+                conn.rollback()
+                return jsonify({'error': 'Salary must be positive'}), 400
+                
+            # First insert into contract table
+            cursor.execute("""
+                INSERT INTO contract (
+                    contract_id,
+                    contract_start_date, 
+                    contract_end_date, 
+                    salary, 
+                    is_valid
+                ) VALUES (%s, %s, %s, %s, %s)
+            """, (
+                data['contract_id'],
+                data['contract_start_date'],
+                data['contract_end_date'],
+                data['salary'],
+                1
+            ))
+            
+            # Then insert into contractemployee table
+            cursor.execute("""
+                INSERT INTO contractemployee (
+                    employee_id, 
+                    contract_id, 
+                    is_valid
+                ) VALUES (%s, %s, %s)
+            """, (
+                employee_id,
+                data['contract_id'],
+                1
+            ))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Employee created successfully',
+            'employee_id': employee_id,
+            'password': actual_password
+        }), 201
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/manager/employees')
+def get_all_employees():
+    """Get all employees with optional search filtering"""
+    try:
+        search_by = request.args.get('search_by')
+        search_value = request.args.get('search_value')
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        base_query = '''
+            SELECT 
+                e.employee_id, 
+                e.employee_name, 
+                e.emp_role, 
+                e.email_address, 
+                e.phone_number,
+                e.hire_date,
+                e.is_valid,
+                CASE 
+                    WHEN he.employee_id IS NOT NULL THEN 'Hourly'
+                    WHEN ce.employee_id IS NOT NULL THEN 'Contract'
+                    ELSE 'Regular'
+                END AS employee_type
+            FROM employee e
+            LEFT JOIN hourlyemployee he ON e.employee_id = he.employee_id AND he.is_valid = TRUE
+            LEFT JOIN contractemployee ce ON e.employee_id = ce.employee_id AND ce.is_valid = TRUE
+            WHERE e.is_valid = TRUE
+        '''
+        
+        # Add search conditions
+        conditions = []
+        params = []
+        
+        if search_by and search_value:
+            if search_by == 'employee_id':
+                conditions.append("e.employee_id = %s")
+                params.append(int(search_value))
+            elif search_by == 'employee_name':
+                conditions.append("e.employee_name LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'emp_role':
+                conditions.append("e.emp_role LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'email_address':
+                conditions.append("e.email_address LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'phone_number':
+                conditions.append("e.phone_number LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'employee_type':
+                if search_value.lower() == 'hourly':
+                    conditions.append("he.employee_id IS NOT NULL")
+                elif search_value.lower() == 'contract':
+                    conditions.append("ce.employee_id IS NOT NULL")
+                else:
+                    conditions.append("he.employee_id IS NULL AND ce.employee_id IS NULL")
+            elif search_by == 'is_valid':
+                # Convert to boolean (1 for true/active, 0 for false/inactive)
+                is_valid = 1 if search_value.lower() in ['true', '1', 'active'] else 0
+                conditions.append("e.is_valid = %s")
+                params.append(is_valid)
+        
+        # Build final query
+        query = base_query
+        if conditions:
+            query += " AND " + " AND ".join(conditions)
+        query += " ORDER BY e.employee_id ASC"
+        
+        cursor.execute(query, params)
+        employees = cursor.fetchall()
+        conn.close()
+        
+        employees_list = []
+        for employee in employees:
+            employees_list.append({
+                'employee_id': employee['employee_id'],
+                'employee_name': employee['employee_name'],
+                'emp_role': employee['emp_role'],
+                'email_address': employee['email_address'],
+                'phone_number': employee['phone_number'],
+                'hire_date': employee['hire_date'].strftime('%Y-%m-%d') if employee['hire_date'] else None,
+                'employee_type': employee['employee_type'],
+                'is_valid': bool(employee['is_valid'])
+            })
+        
+        return jsonify(employees_list)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/manager/employees/<int:employee_id>', methods=['DELETE'])
+def deactivate_employee(employee_id):
+    """Delete an employee by setting is_valid to FALSE in all related tables"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Start transaction
+        cursor.execute("START TRANSACTION")
+        
+        # Check if employee exists
+        cursor.execute("SELECT employee_id FROM employee WHERE employee_id = %s AND is_valid = TRUE", (employee_id,))
+        if cursor.fetchone() is None:
+            conn.close()
+            return jsonify({'error': 'Employee not found or already inactive'}), 404
+        
+        # Soft delete from hourlyemployee if exists
+        cursor.execute("""
+            UPDATE hourlyemployee 
+            SET is_valid = FALSE 
+            WHERE employee_id = %s AND is_valid = TRUE
+        """, (employee_id,))
+        
+        # Soft delete from contractemployee if exists
+        cursor.execute("""
+            UPDATE contractemployee 
+            SET is_valid = FALSE 
+            WHERE employee_id = %s AND is_valid = TRUE
+        """, (employee_id,))
+        
+        # Soft delete from employee
+        cursor.execute("""
+            UPDATE employee 
+            SET is_valid = FALSE 
+            WHERE employee_id = %s
+        """, (employee_id,))
+        
+        if cursor.rowcount == 0:
+            conn.rollback()
+            conn.close()
+            return jsonify({'error': 'Employee not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Employee deleted successfully',
+            'employee_id': employee_id
+        })
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/manager/employees/<int:employee_id>')
+def get_employee(employee_id):
+    """Get a single employee with all details"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get basic employee info
+        cursor.execute("""
+            SELECT 
+                e.*,
+                CASE 
+                    WHEN he.employee_id IS NOT NULL THEN 'Hourly'
+                    WHEN ce.employee_id IS NOT NULL THEN 'Contract'
+                    ELSE 'Regular'
+                END AS employee_type
+            FROM employee e
+            LEFT JOIN hourlyemployee he ON e.employee_id = he.employee_id AND he.is_valid = TRUE
+            LEFT JOIN contractemployee ce ON e.employee_id = ce.employee_id AND ce.is_valid = TRUE
+            WHERE e.employee_id = %s AND e.is_valid = TRUE
+        """, (employee_id,))
+        
+        employee = cursor.fetchone()
+        
+        if not employee:
+            conn.close()
+            return jsonify({'error': 'Employee not found'}), 404
+        
+        # Get additional details based on type
+        if employee['employee_type'] == 'Hourly':
+            cursor.execute("""
+                SELECT hours_worked, hourly_wages 
+                FROM hourlyemployee 
+                WHERE employee_id = %s AND is_valid = TRUE
+            """, (employee_id,))
+            hourly_data = cursor.fetchone()
+            if hourly_data:
+                employee.update(hourly_data)
+                
+        elif employee['employee_type'] == 'Contract':
+            cursor.execute("""
+                SELECT c.contract_start_date, c.contract_end_date, c.salary
+                FROM contractemployee ce
+                JOIN contract c ON ce.contract_id = c.contract_id
+                WHERE ce.employee_id = %s AND ce.is_valid = TRUE AND c.is_valid = TRUE
+            """, (employee_id,))
+            contract_data = cursor.fetchone()
+            if contract_data:
+                employee.update(contract_data)
+        
+        conn.close()
+        
+        # Format dates for JSON
+        if 'hire_date' in employee and employee['hire_date']:
+            employee['hire_date'] = employee['hire_date'].strftime('%Y-%m-%d')
+        if 'contract_start_date' in employee and employee['contract_start_date']:
+            employee['contract_start_date'] = employee['contract_start_date'].strftime('%Y-%m-%d')
+        if 'contract_end_date' in employee and employee['contract_end_date']:
+            employee['contract_end_date'] = employee['contract_end_date'].strftime('%Y-%m-%d')
+        
+        return jsonify(employee)
+    
+    except Exception as e:
+        if conn:
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/api/manager/employees/<int:employee_id>', methods=['PUT'])
+def update_employee(employee_id):
+    """Update an existing employee"""
+    try:
+        data = request.get_json()
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Start transaction
+        cursor.execute("START TRANSACTION")
+        
+        # First check if employee exists
+        cursor.execute("SELECT * FROM employee WHERE employee_id = %s AND is_valid = TRUE", (employee_id,))
+        employee = cursor.fetchone()
+        
+        if not employee:
+            conn.close()
+            return jsonify({'error': 'Employee not found'}), 404
+        
+        # Update employee table
+        cursor.execute("""
+            UPDATE employee 
+            SET 
+                employee_name = %s,
+                emp_role = %s,
+                phone_number = %s,
+                email_address = %s,
+                hire_date = %s,
+                manager_id = %s
+            WHERE employee_id = %s
+        """, (
+            data.get('employee_name', employee['employee_name']),
+            data.get('emp_role', employee['emp_role']),
+            data.get('phone_number', employee['phone_number']),
+            data.get('email_address', employee['email_address']),
+            data.get('hire_date', employee['hire_date']),
+            data.get('manager_id', employee['manager_id']),
+            employee_id
+        ))
+        
+        # Handle employee type changes if needed
+        if 'employee_type' in data:
+            # First remove from any existing type tables
+            cursor.execute("""
+                UPDATE hourlyemployee 
+                SET is_valid = FALSE 
+                WHERE employee_id = %s AND is_valid = TRUE
+            """, (employee_id,))
+            
+            cursor.execute("""
+                UPDATE contractemployee 
+                SET is_valid = FALSE 
+                WHERE employee_id = %s AND is_valid = TRUE
+            """, (employee_id,))
+            
+            # Then add to new type table if specified
+            if data['employee_type'].lower() == 'hourly':
+                if 'hours_worked' not in data or 'hourly_wages' not in data:
+                    conn.rollback()
+                    return jsonify({'error': 'Missing required fields for hourly employee'}), 400
+                    
+                cursor.execute("""
+                    INSERT INTO hourlyemployee (
+                        employee_id, 
+                        hours_worked, 
+                        hourly_wages, 
+                        is_valid
+                    ) VALUES (%s, %s, %s, %s)
+                """, (
+                    employee_id,
+                    data['hours_worked'],
+                    data['hourly_wages'],
+                    1
+                ))
+                
+            elif data['employee_type'].lower() == 'contract':
+                if 'contract_start_date' not in data or 'contract_end_date' not in data or 'salary' not in data:
+                    conn.rollback()
+                    return jsonify({'error': 'Missing required fields for contract employee'}), 400
+                    
+                # Insert into contract table
+                cursor.execute("""
+                    INSERT INTO contract (
+                        contract_start_date, 
+                        contract_end_date, 
+                        salary, 
+                        is_valid
+                    ) VALUES (%s, %s, %s, %s)
+                """, (
+                    data['contract_start_date'],
+                    data['contract_end_date'],
+                    data['salary'],
+                    1
+                ))
+                
+                contract_id = cursor.lastrowid
+                
+                # Insert into contractemployee table
+                cursor.execute("""
+                    INSERT INTO contractemployee (
+                        employee_id, 
+                        contract_id, 
+                        is_valid
+                    ) VALUES (%s, %s, %s)
+                """, (
+                    employee_id,
+                    contract_id,
+                    1
+                ))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Employee updated successfully',
+            'employee_id': employee_id
+        })
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/m_suppliers/')
+def m_suppliers():
+    """Render the suppliers management page"""
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT * FROM Employee", )
+    employee = cursor.fetchone()
+    conn.close()
+    
+    if not employee:
+        return redirect(url_for('emplog'))
+    
+    return render_template('m_suppliers.html', employee=employee)
+
+@app.route('/api/manager/suppliers')
+def get_all_suppliers():
+    """Get all suppliers with optional search filtering"""
+    try:
+        search_by = request.args.get('search_by')
+        search_value = request.args.get('search_value')
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        base_query = '''
+            SELECT 
+                supplier_id, 
+                supplier_name, 
+                email_address, 
+                phone_number,
+                is_valid
+            FROM supplier
+            WHERE is_valid = TRUE
+        '''
+        
+        # Add search conditions
+        conditions = []
+        params = []
+        
+        if search_by and search_value:
+            if search_by == 'supplier_id':
+                conditions.append("supplier_id = %s")
+                params.append(int(search_value))
+            elif search_by == 'supplier_name':
+                conditions.append("supplier_name LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'email_address':
+                conditions.append("email_address LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'phone_number':
+                conditions.append("phone_number LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'is_valid':
+                # Convert to boolean (1 for true/active, 0 for false/inactive)
+                is_valid = 1 if search_value.lower() in ['true', '1', 'active'] else 0
+                conditions.append("is_valid = %s")
+                params.append(is_valid)
+        
+        # Build final query
+        query = base_query
+        if conditions:
+            query += " AND " + " AND ".join(conditions)
+        query += " ORDER BY supplier_id ASC"
+        
+        cursor.execute(query, params)
+        suppliers = cursor.fetchall()
+        conn.close()
+        
+        suppliers_list = []
+        for supplier in suppliers:
+            suppliers_list.append({
+                'supplier_id': supplier['supplier_id'],
+                'supplier_name': supplier['supplier_name'],
+                'email_address': supplier['email_address'],
+                'phone_number': supplier['phone_number'],
+                'is_valid': bool(supplier['is_valid'])
+            })
+        
+        return jsonify(suppliers_list)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/manager/suppliers/<int:supplier_id>', methods=['DELETE'])
+def deactivate_supplier(supplier_id):
+    """Delete a supplier by setting is_valid to FALSE"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Soft delete by setting is_valid to FALSE
+        cursor.execute("""
+            UPDATE supplier 
+            SET is_valid = FALSE 
+            WHERE supplier_id = %s
+        """, (supplier_id,))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Supplier not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Supplier deleted successfully',
+            'supplier_id': supplier_id
+        })
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/manager/suppliers', methods=['POST'])
+def create_supplier():
+    """Create a new supplier"""
+    try:
+        data = request.get_json()
+        required_fields = ['supplier_name']
+        
+        # Validate required fields
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return jsonify({'error': f'{field} is required'}), 400
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            INSERT INTO supplier (supplier_name, email_address, phone_number, is_valid)
+            VALUES (%s, %s, %s, %s)
+        """, (
+            data['supplier_name'],
+            data.get('email_address'),
+            data.get('phone_number'),
+            data.get('is_valid', True)
+        ))
+        
+        supplier_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Supplier created successfully',
+            'supplier_id': supplier_id
+        }), 201
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/manager/suppliers/<int:supplier_id>', methods=['PUT'])
+def update_supplier(supplier_id):
+    """Update an existing supplier"""
+    try:
+        data = request.get_json()
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # First get current supplier data
+        cursor.execute("""
+            SELECT * FROM supplier 
+            WHERE supplier_id = %s AND is_valid = TRUE
+        """, (supplier_id,))
+        supplier = cursor.fetchone()
+        
+        if not supplier:
+            conn.close()
+            return jsonify({'error': 'Supplier not found'}), 404
+        
+        # Update only the fields that were provided
+        update_fields = []
+        params = []
+        
+        if 'supplier_name' in data:
+            update_fields.append("supplier_name = %s")
+            params.append(data['supplier_name'])
+        
+        if 'email_address' in data:
+            update_fields.append("email_address = %s")
+            params.append(data['email_address'])
+        
+        if 'phone_number' in data:
+            update_fields.append("phone_number = %s")
+            params.append(data['phone_number'])
+        
+        if 'is_valid' in data:
+            update_fields.append("is_valid = %s")
+            params.append(data['is_valid'])
+        
+        if not update_fields:
+            conn.close()
+            return jsonify({'error': 'No fields to update'}), 400
+        
+        # Build and execute update query
+        update_query = "UPDATE supplier SET " + ", ".join(update_fields) + " WHERE supplier_id = %s"
+        params.append(supplier_id)
+        
+        cursor.execute(update_query, params)
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Supplier updated successfully',
+            'supplier_id': supplier_id
+        })
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500 
+
+@app.route('/m_orders/')
+def m_orders():
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT * FROM Employee", )
+    employee = cursor.fetchone()
+    conn.close()
+    
+    if not employee:
+        return redirect(url_for('emplog'))
+    
+    return render_template('m_orders.html', employee=employee)
+
+@app.route('/api/manager/Morders')
+def get_all_orders():
+    """Get all orders with optional search filtering"""
+    try:
+        search_by = request.args.get('search_by')
+        search_value = request.args.get('search_value')
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        base_query = '''
+            SELECT 
+                o.order_id, 
+                o.customer_id, 
+                o.employee_id, 
+                o.order_date, 
+                o.expected_received_date, 
+                o.actual_received_date,
+                COALESCE(SUM(od.price * od.quantity), 0) AS total_price
+            FROM `Order` o
+            LEFT JOIN OrderDetails od ON o.order_id = od.order_id AND od.is_valid = TRUE
+            WHERE o.is_valid = TRUE
+        '''
+        
+        # Add search conditions
+        conditions = []
+        params = []
+        
+        if search_by and search_value:
+            if search_by == 'order_id':
+                conditions.append("o.order_id = %s")
+                params.append(int(search_value))
+            elif search_by == 'customer_id':
+                conditions.append("o.customer_id = %s")
+                params.append(int(search_value))
+            elif search_by == 'total_price':
+                conditions.append("COALESCE(SUM(od.price * od.quantity), 0) = %s")
+                params.append(float(search_value))
+            elif search_by == 'status':
+                if search_value == 'pending':
+                    conditions.append("o.actual_received_date IS NULL")
+                elif search_value == 'completed':
+                    conditions.append("o.actual_received_date IS NOT NULL AND o.actual_received_date <= o.expected_received_date")
+                elif search_value == 'delayed':
+                    conditions.append("o.actual_received_date IS NOT NULL AND o.actual_received_date > o.expected_received_date")
+        
+        # Build final query
+        query = base_query
+        if conditions:
+            query += " AND " + " AND ".join(conditions)
+        query += " GROUP BY o.order_id, o.customer_id, o.employee_id, o.order_date, o.expected_received_date, o.actual_received_date"
+        query += " ORDER BY o.order_id ASC"
+        
+        cursor.execute(query, params)
+        orders = cursor.fetchall()
+        conn.close()
+        
+        orders_list = []
+        for order in orders:
+            orders_list.append({
+                'order_id': order['order_id'],
+                'customer_id': order['customer_id'],
+                'employee_id': order['employee_id'],
+                'order_date': str(order['order_date']),
+                'expected_received_date': str(order['expected_received_date']),
+                'actual_received_date': str(order['actual_received_date']) if order['actual_received_date'] else None,
+                'total_price': float(order['total_price'])
+            })
+        
+        return jsonify(orders_list)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+########## Purchase Orders in Manager base html  ###############      
+@app.route('/m_p_orders/<int:employee_id>')
+def m_p_orders(employee_id):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT * FROM Employee WHERE employee_id = %s", (employee_id,))
+    employee = cursor.fetchone()
+    conn.close()
+    
+    if not employee:
+        return redirect(url_for('managerlog'))
+    
+    return render_template('m_p_orders.html', employee=employee)
+
+@app.route('/searchPurchaseOrders', methods=['POST'])
+def search_purchase_orders():
+    """Search purchase orders by attribute and value - restricted to specific attributes only"""
+    try:
+        data = request.get_json()
+        attribute = data.get('attribute')
+        value = data.get('value')
+        
+        if not attribute or not value:
+            return jsonify({'error': 'Attribute and value are required'}), 400
+        
+        # Restrict to only the four allowed search attributes from the dropdown
+        allowed_attributes = {
+            'purchase_order_id': 'po.purchase_order_id',
+            'supplier_id': 'po.supplier_id', 
+            'employee_id': 'po.employee_id',
+            'total_price': 'total_price'  # This is calculated, handled separately
+        }
+        
+        if attribute not in allowed_attributes:
+            return jsonify({'error': 'Invalid search attribute. Only Purchase Order ID, Supplier ID, Employee ID, and Total Price searches are allowed.'}), 400
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Handle total_price search differently since it's a calculated field
+        if attribute == 'total_price':
+            try:
+                # Convert value to float for price comparison
+                price_value = float(value)
+                query = """
+                    SELECT 
+                        po.purchase_order_id,
+                        po.supplier_id,
+                        po.employee_id,
+                        SUM(pod.price * pod.quantity) as total_price,
+                        DATE_FORMAT(po.order_date, '%Y-%m-%d') as order_date,
+                        DATE_FORMAT(po.expected_received_date, '%Y-%m-%d') as expected_received_date,
+                        DATE_FORMAT(po.actual_received_date, '%Y-%m-%d') as actual_received_date,
+                        po.delivery_status
+                    FROM purchaseorder po
+                    INNER JOIN purchaseorderdetails pod ON po.purchase_order_id = pod.purchase_order_id
+                    WHERE po.is_valid = 1 AND pod.is_valid = 1
+                    GROUP BY po.purchase_order_id, po.supplier_id, po.employee_id, 
+                             po.order_date, po.expected_received_date, po.actual_received_date, 
+                             po.delivery_status
+                    HAVING SUM(pod.price * pod.quantity) = %s
+                    ORDER BY po.order_date ASC
+                """
+                cursor.execute(query, (price_value,))
+            except ValueError:
+                return jsonify({'error': 'Invalid price value. Please enter a valid number.'}), 400
+        else:
+            # Handle other attributes (purchase_order_id, supplier_id, employee_id)
+            column = allowed_attributes[attribute]
+            query = f"""
+                SELECT 
+                    po.purchase_order_id,
+                    po.supplier_id,
+                    po.employee_id,
+                    SUM(pod.price * pod.quantity) as total_price,
+                    DATE_FORMAT(po.order_date, '%Y-%m-%d') as order_date,
+                    DATE_FORMAT(po.expected_received_date, '%Y-%m-%d') as expected_received_date,
+                    DATE_FORMAT(po.actual_received_date, '%Y-%m-%d') as actual_received_date,
+                    po.delivery_status
+                FROM purchaseorder po
+                INNER JOIN purchaseorderdetails pod ON po.purchase_order_id = pod.purchase_order_id
+                WHERE po.is_valid = 1 AND pod.is_valid = 1 AND {column} LIKE %s
+                GROUP BY po.purchase_order_id, po.supplier_id, po.employee_id, 
+                         po.order_date, po.expected_received_date, po.actual_received_date, 
+                         po.delivery_status
+                HAVING SUM(pod.price * pod.quantity) > 0
+                ORDER BY po.order_date ASC
+            """
+            cursor.execute(query, (f'%{value}%',))
+        
+        orders = cursor.fetchall()
+        conn.close()
+        
+        return jsonify({'purchase_orders': orders})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/api/purchase_orders', methods=['GET'])
+def get_purchase_orders():
+    """Get all purchase orders with computed total price"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT 
+                po.purchase_order_id, po.supplier_id, po.employee_id,
+                SUM(pod.price * pod.quantity) as total_price,
+                DATE_FORMAT(po.order_date, '%Y-%m-%d') as order_date,
+                DATE_FORMAT(po.expected_received_date, '%Y-%m-%d') as expected_received_date,
+                DATE_FORMAT(po.actual_received_date, '%Y-%m-%d') as actual_received_date,
+                po.delivery_status
+            FROM purchaseorder po, purchaseorderdetails pod  
+            WHERE po.is_valid = 1 AND pod.is_valid =  1 AND po.purchase_order_id = pod.purchase_order_id
+            GROUP BY po.purchase_order_id, po.supplier_id, po.employee_id, 
+                     po.order_date, po.expected_received_date, po.actual_received_date, 
+                     po.delivery_status
+            HAVING SUM(pod.price * pod.quantity) > 0
+            ORDER BY po.order_date ASC
+        """)
+        
+        orders = cursor.fetchall()
+        conn.close()
+        
+        return jsonify(orders)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/products', methods=['GET'])
+def get_products():
+    """Get all valid products"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT product_id, product_name, price 
+            FROM Product 
+            WHERE is_valid = TRUE
+        """)
+        products = cursor.fetchall()
+        
+        conn.close()
+        return jsonify(products), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/purchase_orders', methods=['POST'])
+def create_purchase_order():
+    """Create a new purchase order with products"""
+    conn = None
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['supplier_id', 'employee_id', 'products']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'{field} is required'}), 400
+        
+        if not isinstance(data['products'], list) or len(data['products']) == 0:
+            return jsonify({'error': 'At least one product is required'}), 400
+        
+        # Calculate total price
+        total_price = sum(p['price'] * p['quantity'] for p in data['products'])
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Start transaction
+        conn.start_transaction()
+        
+        # Insert purchase order
+        cursor.execute("""
+            INSERT INTO PurchaseOrder (
+                employee_id,
+                supplier_id,
+                order_date,
+                expected_received_date,
+                delivery_status
+            ) VALUES (%s, %s, %s, %s, %s)
+        """, (
+            data['employee_id'],
+            data['supplier_id'],
+            datetime.now().date(),  # Current date as order date
+            data.get('expected_received_date'),
+            'Pending'
+        ))
+        
+        order_id = cursor.lastrowid
+        
+        # Insert products into PurchaseOrderDetails
+        for product in data['products']:
+            cursor.execute("""
+                INSERT INTO PurchaseOrderDetails (
+                    purchase_order_id,
+                    product_id,
+                    price,
+                    quantity
+                ) VALUES (%s, %s, %s, %s)
+            """, (
+                order_id,
+                product['product_id'],
+                product['price'],
+                product['quantity']
+            ))
+        
+        # Commit transaction
+        conn.commit()
+        
+        return jsonify({
+            'message': 'Purchase order created successfully',
+            'purchase_order_id': order_id,
+            'total_price': total_price
+        }), 201
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/purchase_orders/<int:order_id>', methods=['GET'])
+def get_purchase_order(order_id):
+    """Get a specific purchase order"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT 
+                po.purchase_order_id,
+                po.supplier_id,
+                po.employee_id,
+                po.total_price,
+                DATE_FORMAT(po.order_date, '%Y-%m-%d') as order_date,
+                DATE_FORMAT(po.expected_received_date, '%Y-%m-%d') as expected_received_date,
+                DATE_FORMAT(po.actual_received_date, '%Y-%m-%d') as actual_received_date
+            FROM PurchaseOrder po
+            WHERE po.purchase_order_id = %s
+        """, (order_id,))
+        
+        order = cursor.fetchone()
+        
+        if not order:
+            conn.close()
+            return jsonify({'error': 'Purchase order not found'}), 404
+        
+        conn.close()
+        return jsonify(order)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/purchase_orders/<int:order_id>/products', methods=['GET'])
+def get_purchase_order_products(order_id):
+    """Get products for a specific purchase order"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT 
+                pop.product_order_id,
+                pop.product_id,
+                p.product_name,
+                pop.quantity,
+                pop.price
+            FROM ProductOrderPurchase pop
+            JOIN Product p ON pop.product_id = p.product_id
+            WHERE pop.purchase_order_id = %s
+        """, (order_id,))
+        
+        products = cursor.fetchall()
+        conn.close()
+        
+        return jsonify(products)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/purchase_orders/<int:order_id>', methods=['PUT'])
+def update_purchase_order(order_id):
+    """Update a purchase order (basic info only, not products)"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['supplier_id', 'employee_id', 'total_price', 'order_date', 'expected_received_date']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'{field} is required'}), 400
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE PurchaseOrder 
+            SET 
+                supplier_id = %s,
+                employee_id = %s,
+                total_price = %s,
+                order_date = %s,
+                expected_received_date = %s,
+                actual_received_date = %s
+            WHERE purchase_order_id = %s
+        """, (
+            data['supplier_id'],
+            data['employee_id'],
+            data['total_price'],
+            data['order_date'],
+            data['expected_received_date'],
+            data.get('actual_received_date'),
+            order_id
+        ))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Purchase order not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Purchase order updated successfully',
+            'purchase_order_id': order_id
+        })
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/purchase_orders/<int:order_id>', methods=['DELETE'])
+def delete_purchase_order(order_id):
+    """Delete a purchase order"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # First delete associated products
+        cursor.execute("""
+            DELETE FROM ProductOrderPurchase 
+            WHERE purchase_order_id = %s
+        """, (order_id,))
+        
+        # Then delete the order
+        cursor.execute("""
+            DELETE FROM PurchaseOrder 
+            WHERE purchase_order_id = %s
+        """, (order_id,))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Purchase order not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Purchase order deleted successfully',
+            'purchase_order_id': order_id
+        })
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+
+########## Products in Manager base html  ###############      
+@app.route('/m_products/')
+def m_products():
+    """Render the products management page"""
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT * FROM Employee")
+    employee = cursor.fetchone()
+    conn.close()
+    
+    if not employee:
+        return redirect(url_for('mangerlog'))
+    
+    return render_template('m_products.html', employee=employee)
+
+@app.route('/api/manager/products')
+def get_all_products():
+    """Get all products with optional search filtering"""
+    try:
+        search_by = request.args.get('search_by')
+        search_value = request.args.get('search_value')
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        base_query = '''
+            SELECT 
+                product_id, 
+                product_name, 
+                category,
+                price,
+                stock_quantity,
+                stock_arrival_date,
+                is_valid
+            FROM Product
+            WHERE is_valid = TRUE
+        '''
+        
+        # Add search conditions
+        conditions = []
+        params = []
+        
+        if search_by and search_value:
+            if search_by == 'product_id':
+                conditions.append("product_id = %s")
+                params.append(int(search_value))
+            elif search_by == 'product_name':
+                conditions.append("product_name LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'category':
+                conditions.append("category LIKE %s")
+                params.append(f'%{search_value}%')
+            elif search_by == 'price':
+                conditions.append("price = %s")
+                params.append(float(search_value))
+            elif search_by == 'is_valid':
+                # Convert to boolean (1 for true/active, 0 for false/inactive)
+                is_valid = 1 if search_value.lower() in ['true', '1', 'active'] else 0
+                conditions.append("is_valid = %s")
+                params.append(is_valid)
+        
+        # Build final query
+        query = base_query
+        if conditions:
+            query += " AND " + " AND ".join(conditions)
+        query += " ORDER BY product_id ASC"
+        
+        cursor.execute(query, params)
+        products = cursor.fetchall()
+        conn.close()
+        
+        products_list = []
+        for product in products:
+            products_list.append({
+                'product_id': product['product_id'],
+                'product_name': product['product_name'],
+                'category': product['category'],
+                'price': float(product['price']),
+                'stock_quantity': product['stock_quantity'],
+                'stock_arrival_date': product['stock_arrival_date'].strftime('%Y-%m-%d') if product['stock_arrival_date'] else None,
+                'is_valid': bool(product['is_valid'])
+            })
+        
+        return jsonify(products_list)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/manager/products/<int:product_id>', methods=['DELETE'])
+def deactivate_product(product_id):
+    """Deactivate a product by setting is_valid to FALSE"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Soft delete by setting is_valid to FALSE
+        cursor.execute("""
+            UPDATE Product 
+            SET is_valid = FALSE 
+            WHERE product_id = %s
+        """, (product_id,))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Product not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Product deactivated successfully',
+            'product_id': product_id
+        })
+    
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/manager/products', methods=['POST'])
+def create_product():
+    """Create a new product"""
+    try:
+        data = request.get_json()
+        required_fields = ['product_name', 'category', 'price', 'stock_quantity', 'stock_arrival_date']
+        
+        # Validate required fields
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return jsonify({'error': f'{field} is required'}), 400
+        
+        # Validate price is positive
+        if float(data['price']) <= 0:
+            return jsonify({'error': 'Price must be positive'}), 400
+        
+        # Validate stock quantity is non-negative
+        if int(data['stock_quantity']) < 0:
+            return jsonify({'error': 'Stock quantity cannot be negative'}), 400
+        
+        # Validate stock arrival date is in the future
+        stock_arrival_date = datetime.strptime(data['stock_arrival_date'], '%Y-%m-%d').date()
+        today = date.today()
+        if stock_arrival_date <= today:
+            return jsonify({'error': 'Stock arrival date must be in the future (not today or earlier)'}), 400
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            INSERT INTO Product (
+                product_name, 
+                category, 
+                price, 
+                stock_quantity, 
+                stock_arrival_date,
+                is_valid
+            ) VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            data['product_name'],
+            data['category'],
+            float(data['price']),
+            int(data['stock_quantity']),
+            stock_arrival_date,
+            1  # is_valid
+        ))
+        
+        product_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Product created successfully',
+            'product_id': product_id
+        }), 201
+    
+    except ValueError as e:
+        return jsonify({'error': 'Invalid data format'}), 400
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/manager/products/<int:product_id>', methods=['PUT'])
+def update_product(product_id):
+    """Update an existing product"""
+    try:
+        data = request.get_json()
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # First get current product data
+        cursor.execute("""
+            SELECT * FROM Product 
+            WHERE product_id = %s AND is_valid = TRUE
+        """, (product_id,))
+        product = cursor.fetchone()
+        
+        if not product:
+            conn.close()
+            return jsonify({'error': 'Product not found'}), 404
+        
+        # Validate stock arrival date if provided
+        if 'stock_arrival_date' in data and data['stock_arrival_date']:
+            stock_arrival_date = datetime.strptime(data['stock_arrival_date'], '%Y-%m-%d').date()
+            today = date.today()
+            if stock_arrival_date <= today:
+                conn.close()
+                return jsonify({'error': 'Stock arrival date must be in the future (not today or earlier)'}), 400
+        
+        # Update only the fields that were provided
+        update_fields = []
+        params = []
+        
+        if 'product_name' in data:
+            update_fields.append("product_name = %s")
+            params.append(data['product_name'])
+        
+        if 'category' in data:
+            update_fields.append("category = %s")
+            params.append(data['category'])
+        
+        if 'price' in data:
+            if float(data['price']) <= 0:
+                conn.close()
+                return jsonify({'error': 'Price must be positive'}), 400
+            update_fields.append("price = %s")
+            params.append(float(data['price']))
+        
+        if 'stock_quantity' in data:
+            if int(data['stock_quantity']) < 0:
+                conn.close()
+                return jsonify({'error': 'Stock quantity cannot be negative'}), 400
+            update_fields.append("stock_quantity = %s")
+            params.append(int(data['stock_quantity']))
+        
+        if 'stock_arrival_date' in data and data['stock_arrival_date']:
+            update_fields.append("stock_arrival_date = %s")
+            params.append(datetime.strptime(data['stock_arrival_date'], '%Y-%m-%d').date())
+        
+        if 'is_valid' in data:
+            update_fields.append("is_valid = %s")
+            params.append(1 if data['is_valid'] else 0)
+        
+        if not update_fields:
+            conn.close()
+            return jsonify({'error': 'No fields to update'}), 400
+        
+        # Build and execute update query
+        update_query = "UPDATE Product SET " + ", ".join(update_fields) + " WHERE product_id = %s"
+        params.append(product_id)
+        
+        cursor.execute(update_query, params)
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Product updated successfully',
+            'product_id': product_id
+        })
+    
+    except ValueError as e:
+        return jsonify({'error': 'Invalid data format'}), 400
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': str(e)}), 500   
+
+@app.route('/m_report')
+def m_report():
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT COUNT(*) AS total_employees FROM Employee WHERE is_valid = TRUE")
+    total_employees = cursor.fetchone()['total_employees']
+
+    cursor.execute("SELECT COUNT(*) AS total_customers FROM Customer WHERE is_valid = TRUE")
+    total_customers = cursor.fetchone()['total_customers']
+
+    cursor.execute("SELECT COUNT(*) AS total_suppliers FROM Supplier WHERE is_valid = TRUE")
+    total_suppliers = cursor.fetchone()['total_suppliers']
+
+    cursor.execute("SELECT COUNT(*) AS total_orders FROM `Order` WHERE is_valid = TRUE")
+    total_orders = cursor.fetchone()['total_orders']
+
+    cursor.execute("SELECT COUNT(*) AS total_purchase_orders FROM PurchaseOrder WHERE is_valid = TRUE")
+    total_purchase_orders = cursor.fetchone()['total_purchase_orders']
+
+    cursor.execute("SELECT COUNT(*) AS total_products FROM Product WHERE is_valid = TRUE")
+    total_products = cursor.fetchone()['total_products']
+
+    cursor.execute("SELECT COUNT(*) AS pending_deliveries FROM PurchaseOrder WHERE delivery_status = 'Pending' AND is_valid = TRUE")
+    pending_deliveries = cursor.fetchone()['pending_deliveries']
+
+    cursor.execute("SELECT SUM(amount_paid) AS total_revenue FROM Payment WHERE is_valid = TRUE")
+    total_revenue = cursor.fetchone()['total_revenue']
+
+
+    # Employees under each manager
+    cursor.execute("""
+    SELECT 
+    m.employee_name AS manager_name, 
+    e.employee_name AS employee_name, 
+    e.emp_role
+    FROM Employee e
+    JOIN Employee m ON m.employee_id = e.manager_id
+    WHERE e.is_valid = TRUE 
+    AND e.manager_id IN (
+        SELECT manager_id
+        FROM Employee
+        WHERE is_valid = TRUE
+        GROUP BY manager_id
+        HAVING COUNT(*) > 2
+    )
+    ORDER BY m.employee_name, e.employee_name
+    """)
+    employees_by_manager = cursor.fetchall()
+
+    # Purchase orders
+    cursor.execute("""
+        SELECT s.supplier_name, p.purchase_order_id, p.order_date, p.delivery_status
+        FROM PurchaseOrder p, Supplier s  
+        WHERE p.supplier_id = s.supplier_id AND p.is_valid = TRUE
+        ORDER BY p.order_date ASC
+        LIMIT 3
+    """)
+    purchase_orders = cursor.fetchall()
+
+    # Salary summary
+    cursor.execute("""
+        SELECT e.employee_name, 'Hourly' AS type, 
+               CONCAT('$', he.hourly_wages) AS salary_or_wage,
+               CONCAT('$', (he.hours_worked * he.hourly_wages)) AS total_wage
+        FROM HourlyEmployee he, Employee e 
+        WHERE he.is_valid = TRUE AND he.employee_id = e.employee_id
+
+        UNION
+
+        SELECT e.employee_name, 'Contract' AS type, 
+               CONCAT('$', c.salary) AS salary_or_wage,
+               NULL AS total_pay
+        FROM ContractEmployee ce, Contract c, Employee e 
+        WHERE ce.is_valid = TRUE AND c.is_valid = TRUE AND ce.contract_id = c.contract_id AND ce.employee_id = e.employee_id
+    """)
+    salary_data = cursor.fetchall()
+
+    # Sidebar display info
+    cursor.execute("SELECT * FROM Employee WHERE emp_role LIKE '%Manager%' LIMIT 1")
+    employee = cursor.fetchone()
+
+    #----------
+    cursor.execute("""
+    SELECT c.customer_id, c.customer_name, SUM(od.price * od.quantity) AS total_spent
+    FROM Customer c, `Order` o,OrderDetails od 
+    WHERE c.customer_id = o.customer_id AND o.order_id = od.order_id
+    GROUP BY c.customer_id, c.customer_name
+    ORDER BY total_spent DESC
+    LIMIT 4;
+    """)
+    customer_q1 = cursor.fetchall()
+
+    # Product ordered the most by quantity
+    cursor.execute("""
+    SELECT P.product_name, SUM(OD.quantity) AS total_quantity_sold
+    FROM OrderDetails OD
+    JOIN Product P ON OD.product_id = P.product_id
+    WHERE OD.is_valid = TRUE
+    GROUP BY P.product_name
+    HAVING SUM(OD.quantity) >= ALL (
+        SELECT SUM(quantity)
+        FROM OrderDetails
+        WHERE is_valid = 1
+        GROUP BY product_id
+    )
+""")
+    top_product = cursor.fetchone()
+
+    ''' 
+        cursor.execute("""
+            SELECT DISTINCT P.product_name 
+            FROM OrderDetails OD 
+            JOIN Product P ON OD.product_id = P.product_id 
+            WHERE OD.is_valid = 1 AND OD.price = (
+                SELECT MIN(price) 
+                FROM OrderDetails
+                WHERE is_valid = TRUE
+            )
+        """)
+        lowest_price_product = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT 
+                c.customer_id,
+                c.customer_name,
+                COUNT(DISTINCT o.order_id) AS total_orders,
+                SUM(od.price * od.quantity) AS total_amount_spent
+            FROM 
+                Customer c
+            JOIN `Order` o ON c.customer_id = o.customer_id
+            JOIN OrderDetails od ON o.order_id = od.order_id
+            WHERE o.is_valid = 1 AND od.is_valid = 1
+            GROUP BY c.customer_id, c.customer_name
+            ORDER BY total_amount_spent DESC
+        """)
+        customer_spending = cursor.fetchall()
+    '''
+
+
+    conn.close()
+
+    return render_template("m_report.html",
+        employee=employee,
+        total_employees=total_employees,
+        total_customers=total_customers,
+        total_suppliers=total_suppliers,
+        total_orders=total_orders,
+        total_purchase_orders=total_purchase_orders,
+        total_products=total_products,
+        total_revenue = total_revenue,
+        pending_deliveries=pending_deliveries,
+        employees_by_manager=employees_by_manager,
+        customer_q1=customer_q1,
+        purchase_orders=purchase_orders,
+        salary_data=salary_data, 
+        top_product = top_product, 
+    )
+
+################## Employee ############################
+
+@app.route('/emplog', methods=['GET', 'POST'])
 def emplog():
+    if request.method == 'POST':
+        employee_id = request.form['employee_id']
+        password = request.form['password']
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        query = "SELECT * FROM Employee WHERE employee_id = %s"
+        cursor.execute(query, (employee_id,))
+        emp = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if emp:
+            if password == '1234':  
+                return redirect(url_for('emp', employee_id=employee_id))
+            else:
+                print("Wrong password")
+                return redirect(url_for('emplog'))
+        else:
+            print("No such employee")
+            return redirect(url_for('emplog'))
+
     return render_template('emplog.html')
+
+@app.route('/emp/<int:employee_id>')
+@app.route('/emp/<int:employee_id>/Eprofile') 
+def emp(employee_id, Eprofile=False):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Get basic employee info with manager details
+    cursor.execute("""
+        SELECT e.*, m.employee_name as manager_name, m.email_address as manager_email
+        FROM Employee e
+        LEFT JOIN Employee m ON e.manager_id = m.employee_id
+        WHERE e.employee_id = %s
+    """, (employee_id,))
+    employee = cursor.fetchone()
+    
+    if not employee:
+        conn.close()
+        return "Employee not found", 404
+    
+    # Only fetch detailed employment data if we're viewing the profile
+    hourly_data = None
+    contract_data = None
+    
+    if request.path.endswith('/Eprofile') or request.args.get('Eprofile'):
+        cursor.execute("SELECT * FROM HourlyEmployee WHERE employee_id = %s", (employee_id,))
+        hourly_data = cursor.fetchone()
+        
+        cursor.execute("SELECT * FROM ContractEmployee WHERE employee_id = %s", (employee_id,))
+        contract_data = cursor.fetchone()
+    
+    conn.close()
+    
+    # Determine which template to render
+    if request.path.endswith('/Eprofile') or request.args.get('Eprofile'):
+        return render_template('emp.html', 
+                            employee=employee,
+                            hourly_data=hourly_data,
+                            contract_data=contract_data,
+                            show_profile=True)
+    else:
+        return render_template('emp.html', employee=employee)
+     
+@app.route('/e_orders/<int:employee_id>')
+def e_orders(employee_id):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("SELECT * FROM Employee WHERE employee_id = %s", (employee_id,))
+    employee = cursor.fetchone()
+    conn.close()
+
+    if not employee:
+        return redirect(url_for('emplog'))
+
+    return render_template('e_orders.html', employee=employee)
+
+
+@app.route('/api/employees/<int:employee_id>/orders')
+def get_employee_orders(employee_id):
+    """Get all orders for a specific employee"""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute('''
+            SELECT order_id, customer_id, employee_id, 
+                   order_date, expected_received_date, actual_received_date
+            FROM `Order`
+            WHERE employee_id = %s
+            ORDER BY order_id ASC
+        ''', (employee_id,))
+        
+        orders = cursor.fetchall()
+        conn.close()
+        
+        # Convert to list of dictionaries
+        orders_list = []
+        for order in orders:
+            orders_list.append({
+                'order_id': order['order_id'],
+                'customer_id': order['customer_id'],
+                'employee_id': order['employee_id'],
+                'order_date': str(order['order_date']),
+                'expected_received_date': str(order['expected_received_date']),
+                'actual_received_date': str(order['actual_received_date']) if order['actual_received_date'] else None
+            })
+        
+        return jsonify(orders_list)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/employees/<int:employee_id>/orders/search', methods=['POST'])
+def search_employee_orders(employee_id):
+    """Search orders for a specific employee"""
+    try:
+        data = request.get_json()
+        attribute = data.get('attribute')
+        value = data.get('value')
+        
+        if not attribute or not value:
+            return jsonify({'error': 'Missing search parameters'}), 400
+        
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Base query for this employee's orders
+        query = '''
+            SELECT order_id, customer_id, employee_id, 
+                   order_date, expected_received_date, actual_received_date
+            FROM `Order`
+            WHERE employee_id = %s
+        '''
+        params = [employee_id]
+        
+        # Add search conditions based on attribute
+        if attribute == 'order_id':
+            query += ' AND order_id = %s'
+            params.append(int(value))
+        elif attribute == 'customer_id':
+            query += ' AND customer_id = %s'
+            params.append(int(value))
+            params.append(float(value))
+        elif attribute == 'order_date':
+            query += ' AND DATE(order_date) = %s'
+            params.append(value)
+        else:
+            return jsonify({'error': 'Invalid search attribute'}), 400
+        
+        query += ' ORDER BY order_id ASC'
+        
+        cursor.execute(query, tuple(params))
+        orders = cursor.fetchall()
+        conn.close()
+        
+        # Convert to list of dictionaries
+        orders_list = []
+        for order in orders:
+            orders_list.append({
+                'order_id': order['order_id'],
+                'customer_id': order['customer_id'],
+                'employee_id': order['employee_id'],
+                'order_date': str(order['order_date']),
+                'expected_received_date': str(order['expected_received_date']),
+                'actual_received_date': str(order['actual_received_date']) if order['actual_received_date'] else None
+            })
+        
+        return jsonify({'orders': orders_list})
+    
+    except ValueError as e:
+        return jsonify({'error': 'Invalid value type for search'}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/e_purchase-orders/<int:employee_id>')
+def e_purchase_orders(employee_id):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT * FROM Employee WHERE employee_id = %s", (employee_id,))
+    employee = cursor.fetchone()
+    conn.close()
+    
+    if not employee:
+        return redirect(url_for('emplog'))
+    
+    return render_template('e_purchase_orders.html', employee_id=employee_id)
+
+@app.route('/e_products/<int:employee_id>')
+def e_products(employee_id):
+    """Products management page for employees"""
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Get employee info
+    cursor.execute("SELECT * FROM Employee WHERE employee_id = %s", (employee_id,))
+    employee = cursor.fetchone()
+    
+    if not employee:
+        conn.close()
+        return redirect(url_for('emplog'))
+    
+    # Get products data
+    cursor.execute('''
+        SELECT product_id, product_name, category,
+                   price, stock_quantity, stock_arrival_date
+            FROM Product
+            ORDER BY product_id
+    ''')
+    products = cursor.fetchall()
+    conn.close()
+    
+    return render_template('e_products.html', employee=employee, products=products)
+
+@app.route('/e_reports/<int:employee_id>')
+def e_reports(employee_id):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    # Employee basic info
+    cursor.execute("""
+        SELECT * FROM Employee 
+        WHERE employee_id = %s AND is_valid = TRUE
+    """, (employee_id,))
+    employee = cursor.fetchone()
+
+    # Total orders handled by the employee
+    cursor.execute("""
+        SELECT COUNT(*) AS total_orders_handled
+        FROM `Order`
+        WHERE employee_id = %s AND is_valid = TRUE
+    """, (employee_id,))
+    total_orders_handled = cursor.fetchone()['total_orders_handled']
+
+    # Total sales value handled by the employee
+    cursor.execute("""
+        SELECT SUM(od.price * od.quantity) AS total_sales_value
+        FROM `Order` o, OrderDetails od 
+        WHERE o.order_id = od.order_id AND o.employee_id = %s AND o.is_valid = TRUE AND od.is_valid = TRUE
+    """, (employee_id,))
+    total_sales_value = cursor.fetchone()['total_sales_value'] or 0
+
+    # Purchase orders made by the employee
+    cursor.execute("""
+        SELECT po.purchase_order_id, s.supplier_name, po.order_date, po.delivery_status
+        FROM PurchaseOrder po, Supplier s  
+        WHERE po.supplier_id = s.supplier_id AND po.employee_id = %s AND po.is_valid = TRUE
+        ORDER BY po.order_date DESC
+    """, (employee_id,))
+    purchase_orders = cursor.fetchall()
+
+    # Orders with product details
+    cursor.execute("""
+        SELECT o.order_id, o.order_date, p.product_name, od.quantity, od.price, (od.quantity * od.price) AS total_value
+        FROM `Order` o, OrderDetails od, Product p 
+        WHERE o.order_id = od.order_id AND od.product_id = p.product_id AND o.employee_id = %s AND o.is_valid = TRUE AND od.is_valid = TRUE
+        ORDER BY o.order_date DESC
+    """, (employee_id,))
+    handled_orders = cursor.fetchall()
+
+    # Determine employee type: Hourly or Contract
+    cursor.execute("""
+        SELECT 'Hourly' AS type, he.hourly_wages AS salary_or_wage, he.hours_worked, (he.hourly_wages * he.hours_worked) AS total_pay
+        FROM HourlyEmployee he
+        WHERE he.employee_id = %s AND he.is_valid = TRUE
+    """, (employee_id,))
+    hourly = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT 'Contract' AS type, c.salary AS salary_or_wage, NULL AS hours_worked, NULL AS total_pay
+        FROM ContractEmployee ce, Contract c  
+        WHERE ce.contract_id = c.contract_id AND ce.employee_id = %s AND ce.is_valid = TRUE AND c.is_valid = TRUE
+    """, (employee_id,))
+    contract = cursor.fetchone()
+
+    salary_info = hourly or contract
+
+    # Get the minimum order item value
+    cursor.execute("""
+        SELECT MIN(price * quantity) AS min_value
+        FROM OrderDetails
+        WHERE is_valid = TRUE
+    """)
+    min_value = cursor.fetchone()['min_value']
+
+    # Get employees who handled orders with that minimum value
+    cursor.execute("""
+        SELECT DISTINCT E.employee_name, O.order_id, (OD.price * OD.quantity) AS order_value
+        FROM `Order` O
+        JOIN OrderDetails OD ON O.order_id = OD.order_id
+        JOIN Employee E ON O.employee_id = E.employee_id
+        WHERE (OD.price * OD.quantity) = %s
+        AND O.is_valid = TRUE AND OD.is_valid = TRUE
+    """, (min_value,))
+    employees = cursor.fetchall()
+
+    # Avg order value per employee
+    cursor.execute("""
+        SELECT E.employee_name, AVG(OD.price * OD.quantity) AS avg_order_value
+        FROM Employee E
+        JOIN `Order` O ON E.employee_id = O.employee_id
+        JOIN OrderDetails OD ON O.order_id = OD.order_id
+        WHERE O.is_valid = TRUE AND OD.is_valid = TRUE
+        GROUP BY E.employee_name
+        ORDER BY E.employee_name
+    """)
+    avg_order_values = cursor.fetchall()
+
+
+    # Employee(s) with most valid orders
+    cursor.execute("""
+        SELECT E.employee_name, COUNT(*) AS order_count
+        FROM `Order` O
+        JOIN Employee E ON O.employee_id = E.employee_id
+        WHERE O.is_valid = TRUE
+        GROUP BY E.employee_name
+        HAVING COUNT(*) >= ALL (
+            SELECT COUNT(*)
+            FROM `Order`
+            WHERE is_valid = TRUE
+            GROUP BY employee_id
+        )
+    """)
+    top_order_employees = cursor.fetchall()
+
+    conn.close()
+
+    return render_template("e_reports.html",
+        employee=employee,
+        total_orders_handled=total_orders_handled,
+        total_sales_value=total_sales_value,
+        purchase_orders=purchase_orders,
+        handled_orders=handled_orders,
+        salary_info=salary_info,
+        min_value=min_value,
+        employees=employees,
+        avg_order_values=avg_order_values,
+        top_order_employees=top_order_employees
+    )
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

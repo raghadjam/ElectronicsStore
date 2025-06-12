@@ -1,0 +1,275 @@
+{% extends "managerbase.html" %}
+
+{% block title %}My Orders{% endblock %}
+
+{% block page_title %}My Orders{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">My Orders</h5>
+            <div>
+                <button class="btn btn-primary-custom btn-sm" onclick="fetchMyOrders()">
+                    <i class="fas fa-sync-alt me-1"></i> Reload
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Search functionality (optional) -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <select id="searchAttribute" class="form-select">
+                        <option value="order_id">Order ID</option>
+                        <option value="customer_id">Customer ID</option>
+                        <option value="total_price">Total Price</option>
+                        <option value="status">Status</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" id="searchValue" class="form-control" placeholder="Search...">
+                        <select id="statusValue" class="form-select d-none">
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="delayed">Delayed</option>
+                        </select>
+                        <button class="btn btn-primary-custom" onclick="searchMyOrders()">
+                            <i class="fas fa-search me-1"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">Order ID</th>
+                            <th scope="col">Customer ID</th>
+                            <th scope="col">Total Price</th>
+                            <th scope="col">Order Date</th>
+                            <th scope="col">Expected Date</th>
+                            <th scope="col">Received Date</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTable">
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+        fetchMyOrders();
+    });
+
+    function fetchMyOrders() {
+        // Show loading state
+        const tableBody = document.getElementById('ordersTable');
+        tableBody.innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+
+        // Fetch orders for this specific employee
+        fetch('/api/manager/Morders')
+
+            .then(response => response.json())
+            .then(data => {
+                tableBody.innerHTML = ''; // Clear loading state
+
+                if (data.error) {
+                    tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-danger py-4">
+                            Error loading orders: ${data.error}
+                        </td>
+                    </tr>
+                `;
+                    return;
+                }
+
+                if (data.length === 0) {
+                    tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            You haven't prepared any orders yet
+                        </td>
+                    </tr>
+                `;
+                    return;
+                }
+
+                data.forEach(order => {
+                    const statusClass = getStatusClass(order.actual_received_date, order.expected_received_date);
+                    const statusText = getStatusText(order.actual_received_date, order.expected_received_date);
+
+                    const row = `
+    <tr id="order-${order.order_id}">
+        <td>${order.order_id}</td>
+        <td>${order.customer_id}</td>
+        <td>$${order.total_price.toFixed(2)}</td>  <!-- Display total price -->
+        <td>${formatDate(order.order_date)}</td>
+        <td>${formatDate(order.expected_received_date)}</td>
+        <td>${order.actual_received_date ? formatDate(order.actual_received_date) : 'Not received yet'}</td>
+        <td><span class="order-status ${statusClass}">${statusText}</span></td>
+    </tr>
+`;
+                    tableBody.innerHTML += row;
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching orders:', error);
+                tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-danger py-4">
+                        Error loading orders. Please try again.
+                    </td>
+                </tr>
+            `;
+            });
+    }
+
+
+
+    function formatDate(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString();
+    }
+
+    function getStatusClass(actualDate, expectedDate) {
+        if (!actualDate) return 'status-pending';
+
+        const actual = new Date(actualDate);
+        const expected = new Date(expectedDate);
+
+        if (actual <= expected) return 'status-completed';
+        return 'status-processing'; // delayed
+    }
+
+    function getStatusText(actualDate, expectedDate) {
+        if (!actualDate) return 'Pending';
+
+        const actual = new Date(actualDate);
+        const expected = new Date(expectedDate);
+
+        if (actual <= expected) return 'Completed';
+        return 'Delayed';
+    }
+    function searchMyOrders() {
+        const searchAttribute = document.getElementById('searchAttribute').value;
+        let searchValue = document.getElementById('searchValue').value;
+        const statusDropdown = document.getElementById('statusValue');
+
+        // Show/hide status dropdown based on selected attribute
+        if (searchAttribute === 'status') {
+            document.getElementById('searchValue').classList.add('d-none');
+            statusDropdown.classList.remove('d-none');
+            searchValue = statusDropdown.value;
+        } else {
+            document.getElementById('searchValue').classList.remove('d-none');
+            statusDropdown.classList.add('d-none');
+        }
+
+        // Show loading state
+        const tableBody = document.getElementById('ordersTable');
+        tableBody.innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (searchValue) {
+            params.append('search_by', searchAttribute);
+            params.append('search_value', searchValue);
+        }
+
+        // Fetch orders with search parameters
+        fetch(`/api/manager/Morders?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                // Process and display results (same as fetchMyOrders)
+                displayOrders(data);
+            })
+            .catch(error => {
+                console.error('Error searching orders:', error);
+                tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-danger py-4">
+                        Error searching orders. Please try again.
+                    </td>
+                </tr>
+            `;
+            });
+    }
+
+    function displayOrders(data) {
+        const tableBody = document.getElementById('ordersTable');
+        tableBody.innerHTML = '';
+
+        if (data.error) {
+            tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center text-danger py-4">
+                    Error loading orders: ${data.error}
+                </td>
+            </tr>
+        `;
+            return;
+        }
+
+        if (data.length === 0) {
+            tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                    No orders found matching your criteria
+                </td>
+            </tr>
+        `;
+            return;
+        }
+
+        data.forEach(order => {
+            const statusClass = getStatusClass(order.actual_received_date, order.expected_received_date);
+            const statusText = getStatusText(order.actual_received_date, order.expected_received_date);
+
+            const row = `
+            <tr id="order-${order.order_id}">
+                <td>${order.order_id}</td>
+                <td>${order.customer_id}</td>
+                <td>$${order.total_price.toFixed(2)}</td>
+                <td>${formatDate(order.order_date)}</td>
+                <td>${formatDate(order.expected_received_date)}</td>
+                <td>${order.actual_received_date ? formatDate(order.actual_received_date) : 'Not received yet'}</td>
+                <td><span class="order-status ${statusClass}">${statusText}</span></td>
+            </tr>
+        `;
+            tableBody.innerHTML += row;
+        });
+    }
+</script>
+{% endblock %}

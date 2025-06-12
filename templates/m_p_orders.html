@@ -1,0 +1,668 @@
+{% extends "managerbase.html" %}
+
+{% block page_title %}Purchase Orders{% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="container">
+        <div class="d-flex bd-highlight mb-3">
+            <div class="me-auto p-2 bd-highlight">
+                <h2>Purchase Orders</h2>
+            </div>
+            <div class="p-2 bd-highlight">
+                <button type="button" class="btn btn-secondary" onclick="showOrderCreateBox()">Create New
+                    Purchase Order</button>
+            </div>
+        </div>
+        <!-- Search functionality -->
+        <div class="d-flex mb-3">
+            <select id="searchAttribute" class="form-select" style="width: 200px; margin-right: 10px;">
+                <option value="purchase_order_id">Purchase Order ID</option>
+                <option value="supplier_id">Supplier ID</option>
+                <option value="employee_id">Employee ID</option>
+                <option value="total_price">Total Price</option>
+            </select>
+            <input type="text" id="searchValue" class="form-control" placeholder="Search...">
+            <button class="btn btn-secondary" onclick="fetchOrders()"
+                style="margin-left: 10px; background-color: green;">Reload</button>
+            <button class="btn btn-primary" onclick="searchOrders()" style="margin-left: 10px;">Search</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">Purchase Order ID</th>
+                        <th scope="col">Supplier ID</th>
+                        <th scope="col">Employee ID</th>
+                        <th scope="col">Total Price</th>
+                        <th scope="col">Order Date</th>
+                        <th scope="col">Expected Date</th>
+                        <th scope="col">Received Date</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="mytable">
+                    <tr>
+                        <th scope="row" colspan="8">Loading...</th>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Edit Order Section -->
+        <div id="editOrderBox" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    Edit Purchase Order
+                </div>
+                <div class="card-body">
+                    <!-- Form to edit order -->
+                    <form id="editOrderForm">
+                        <input type="hidden" id="editPurchaseOrderId">
+                        <div class="mb-3">
+                            <label for="editSupplierId" class="form-label">Supplier ID</label>
+                            <input type="number" class="form-control" id="editSupplierId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editEmployeeId" class="form-label">Employee ID</label>
+                            <input type="number" class="form-control" id="editEmployeeId" required>
+                        </div>
+
+                        <!-- Product selection for editing -->
+                        <div class="mb-3">
+                            <label class="form-label">Products</label>
+                            <div id="editProductSelection" class="border p-3">
+                                <!-- Products will be loaded here -->
+                                <p>Loading products...</p>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Update</button>
+                        <button type="button" class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Order Section -->
+        <div id="createOrderBox" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    Create New Purchase Order
+                </div>
+                <div class="container mt-5">
+                    <h2 class="mb-4">Create New Purchase Order</h2>
+
+                    <div class="product-selection">
+                        <h4>Select Products</h4>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <select id="productSelect" class="form-select">
+                                    <option value="">Select a product</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="number" id="productQuantity" class="form-control" placeholder="Quantity"
+                                    min="1" value="1">
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary w-100" onclick="addProduct()">Add Product</button>
+                            </div>
+                        </div>
+
+                        <div id="selectedProductsContainer">
+                            <h5>Selected Products</h5>
+                            <div id="selectedProducts" class="mb-3">
+                                <p class="text-muted">No products selected yet</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="order-summary">
+                        <h4>Order Summary</h4>
+                        <form id="purchaseOrderForm">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="supplierId" class="form-label">Supplier ID</label>
+                                    <input type="number" class="form-control" id="supplierId" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="employeeId" class="form-label">Employee ID</label>
+                                    <input type="number" class="form-control" id="employeeId" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="orderDate" class="form-label">Order Date</label>
+                                    <input type="date" class="form-control" id="orderDate" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="expectedDate" class="form-label">Expected Received Date</label>
+                                    <input type="date" class="form-control" id="expectedDate" required>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="totalPrice" class="form-label">Total Price</label>
+                                <input type="text" class="form-control" id="totalPrice" readonly value="0.00">
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button type="button" class="btn btn-secondary me-2"
+                                    onclick="clearForm()">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Submit Order</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Global variables to store products and selected products
+    let products = [];
+    let selectedProducts = [];
+    let editSelectedProducts = [];
+
+    document.addEventListener("DOMContentLoaded", function () {
+        fetchOrders();
+        fetchProducts();
+        const today = new Date().toISOString().split('T')[0];
+
+        // Set order date only if element exists
+        const orderDateElement = document.getElementById('orderDate');
+        if (orderDateElement) {
+            orderDateElement.value = today;
+        }
+
+        // FIXED: Only attach one event listener to the correct form
+        const purchaseOrderForm = document.getElementById('purchaseOrderForm');
+        if (purchaseOrderForm) {
+            purchaseOrderForm.addEventListener('submit', submitOrder);
+        }
+    });
+
+    function fetchProducts() {
+        console.log('Fetching products...'); // Debug log
+        fetch('/api/products')
+            .then(response => {
+                console.log('Response status:', response.status); // Debug log
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Products received:', data); // Debug log
+                products = data;
+                populateProductDropdown();
+            })
+            .catch(error => {
+                console.error('Error fetching products:', error);
+                // Show user-friendly error message
+                const select = document.getElementById('productSelect');
+                if (select) {
+                    select.innerHTML = '<option value="">Error loading products</option>';
+                }
+            });
+    }
+
+    function populateProductDropdown() {
+        const select = document.getElementById('productSelect');
+
+        // Check if the select element exists
+        if (!select) {
+            console.error('Product select element not found');
+            return;
+        }
+
+        // Clear existing options
+        select.innerHTML = '<option value="">Select a product</option>';
+
+        // Check if products array exists and has items
+        if (!products || !Array.isArray(products) || products.length === 0) {
+            console.log('No products available or products is not an array:', products);
+            select.innerHTML = '<option value="">No products available</option>';
+            return;
+        }
+
+        console.log('Populating dropdown with', products.length, 'products'); // Debug log
+
+        // Populate dropdown with products
+        products.forEach((product, index) => {
+            console.log(`Adding product ${index}:`, product); // Debug log
+
+            // Validate product object has required properties
+            if (!product.product_id) {
+                console.warn('Product missing product_id:', product);
+                return;
+            }
+
+            const option = document.createElement('option');
+            option.value = product.product_id;
+
+            // Handle missing product_name or price gracefully
+            const productName = product.product_name || 'Unknown Product';
+            const productPrice = product.price !== undefined ? product.price : 0;
+
+            option.textContent = `${productName} - $${parseFloat(productPrice).toFixed(2)}`;
+            select.appendChild(option);
+        });
+
+        console.log('Dropdown populated successfully');
+    }
+
+    function showOrderCreateBox() {
+        selectedProducts = []; // Reset selected products
+        document.getElementById('createOrderBox').style.display = 'block';
+        document.getElementById('selectedProducts').innerHTML = '<p class="text-muted">No products selected yet</p>';
+        document.getElementById('totalPrice').value = '0.00';
+
+        // Ensure products are fetched and dropdown is populated
+        if (!products || products.length === 0) {
+            console.log('Products not loaded, fetching...');
+            fetchProducts();
+        } else {
+            console.log('Products already loaded, repopulating dropdown...');
+            populateProductDropdown();
+        }
+    }
+
+    function addProduct() {
+        const productId = parseInt(document.getElementById('productSelect').value);
+        const quantity = parseInt(document.getElementById('productQuantity').value);
+
+        if (!productId || isNaN(quantity) || quantity <= 0) {
+            alert('Please select a product and enter a valid quantity');
+            return;
+        }
+
+        const product = products.find(p => p.product_id === productId);
+        if (!product) {
+            alert('Selected product not found');
+            return;
+        }
+
+        // Check if product already exists in selection
+        const existingIndex = selectedProducts.findIndex(p => p.product_id === productId);
+        if (existingIndex >= 0) {
+            selectedProducts[existingIndex].quantity += quantity;
+        } else {
+            selectedProducts.push({
+                product_id: productId,
+                product_name: product.product_name,
+                price: product.price,
+                quantity: quantity
+            });
+        }
+
+        updateSelectedProductsDisplay();
+        calculateTotalPrice();
+
+        // Reset selection
+        document.getElementById('productSelect').value = '';
+        document.getElementById('productQuantity').value = 1;
+    }
+
+    function updateSelectedProductsDisplay() {
+        const container = document.getElementById('selectedProducts');
+
+        if (selectedProducts.length === 0) {
+            container.innerHTML = '<p class="text-muted">No products selected yet</p>';
+            return;
+        }
+
+        let html = '<table class="table table-sm">';
+        html += '<thead><tr><th>Product</th><th>Price</th><th>Quantity</th><th>Subtotal</th><th>Action</th></tr></thead>';
+        html += '<tbody>';
+
+        selectedProducts.forEach((product, index) => {
+            html += `
+                    <tr>
+                        <td>${product.product_name}</td>
+                        <td>$${product.price.toFixed(2)}</td>
+                        <td>${product.quantity}</td>
+                        <td>$${(product.price * product.quantity).toFixed(2)}</td>
+                        <td><button class="btn btn-sm btn-danger" onclick="removeProduct(${index})">Remove</button></td>
+                    </tr>
+                `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function removeProduct(index) {
+        selectedProducts.splice(index, 1);
+        updateSelectedProductsDisplay();
+        calculateTotalPrice();
+    }
+
+    function calculateTotalPrice() {
+        const total = selectedProducts.reduce((sum, product) => sum + (product.price * product.quantity), 0);
+        const totalPriceElement = document.getElementById('totalPrice');
+        if (totalPriceElement) {
+            totalPriceElement.value = total.toFixed(2);
+        }
+    }
+
+    function submitOrder(event) {
+        event.preventDefault();
+        console.log('submitOrder called'); // Debug log
+
+        if (selectedProducts.length === 0) {
+            alert('Please add at least one product to the order');
+            return;
+        }
+
+        const orderData = {
+            supplier_id: parseInt(document.getElementById('supplierId').value),
+            employee_id: parseInt(document.getElementById('employeeId').value),
+            expected_received_date: document.getElementById('expectedDate').value,
+            products: selectedProducts.map(p => ({
+                product_id: p.product_id,
+                quantity: p.quantity,
+                price: p.price
+            }))
+        };
+
+        console.log('Submitting order data:', orderData); // Debug log
+
+        fetch('/api/purchase_orders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(orderData)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    clearForm();
+                    fetchOrders(); // Refresh the orders table
+                    document.getElementById('createOrderBox').style.display = 'none';
+                } else {
+                    alert(data.error || 'Failed to create purchase order');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while creating the order');
+            });
+    }
+
+    function clearForm() {
+        selectedProducts = [];
+        updateSelectedProductsDisplay();
+        calculateTotalPrice();
+        const form = document.getElementById('purchaseOrderForm');
+        if (form) {
+            form.reset();
+        }
+        const today = new Date().toISOString().split('T')[0];
+        const orderDateElement = document.getElementById('orderDate');
+        if (orderDateElement) {
+            orderDateElement.value = today;
+        }
+
+        // Hide the create order box
+        document.getElementById('createOrderBox').style.display = 'none';
+    }
+
+    function cancelCreate() {
+        clearForm();
+    }
+
+    function fetchOrders() {
+        fetch('/api/purchase_orders')
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.getElementById('mytable');
+                tableBody.innerHTML = ''; // Clear previous data
+
+                if (data.error) {
+                    console.error(data.error);
+                    tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error: ${data.error}</td></tr>`;
+                    return;
+                }
+
+                if (data.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No purchase orders found</td></tr>';
+                    return;
+                }
+
+                data.forEach(order => {
+                    const row = `
+                    <tr id="purchase-order-${order.purchase_order_id}">
+                        <td>${order.purchase_order_id}</td>
+                        <td>${order.supplier_id}</td>
+                        <td>${order.employee_id}</td>
+                        <td>$${parseFloat(order.total_price).toFixed(2)}</td>
+                        <td>${order.order_date || 'N/A'}</td>
+                        <td>${order.expected_received_date || 'N/A'}</td>
+                        <td>${order.actual_received_date || 'Not received yet'}</td>
+                        <td>
+                            <button class="btn btn-warning" onclick="editOrder(${order.purchase_order_id})">Edit</button>
+                            <button class="btn btn-danger" onclick="deleteOrder(${order.purchase_order_id})">Delete</button>
+                            <button class="btn btn-info" onclick="viewOrderDetails(${order.purchase_order_id})">Details</button>
+                        </td>
+                    </tr>
+                `;
+                    tableBody.innerHTML += row;
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching purchase orders:', error);
+                const tableBody = document.getElementById('mytable');
+                tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Failed to load purchase orders</td></tr>';
+            });
+    }
+
+    function viewOrderDetails(purchaseOrderId) {
+        fetch(`/api/purchase_orders/${purchaseOrderId}/products`)
+            .then(response => response.json())
+            .then(products => {
+                let html = 'Ordered Products:\n\n';
+                let total = 0;
+
+                products.forEach(product => {
+                    const subtotal = product.price * product.quantity;
+                    total += subtotal;
+                    html += `${product.product_name} - $${product.price.toFixed(2)} x ${product.quantity} = $${subtotal.toFixed(2)}\n`;
+                });
+
+                html += `\nTotal: $${total.toFixed(2)}`;
+                alert(html);
+            })
+            .catch(error => {
+                console.error('Error fetching order details:', error);
+                alert('Failed to load order details');
+            });
+    }
+
+    function deleteOrder(purchaseOrderId) {
+        if (confirm('Are you sure you want to delete this purchase order?')) {
+            fetch(`/api/purchase_orders/${purchaseOrderId}`, {
+                method: 'DELETE'
+            })
+                .then(response => {
+                    if (response.ok) {
+                        document.querySelector(`#purchase-order-${purchaseOrderId}`).remove();
+                        alert('Purchase order deleted successfully!');
+                    } else {
+                        alert('Failed to delete purchase order.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting purchase order:', error);
+                    alert('An error occurred while deleting purchase order.');
+                });
+        }
+    }
+
+    function editOrder(purchaseOrderId) {
+        fetch(`/api/purchase_orders/${purchaseOrderId}`)
+            .then(response => response.json())
+            .then(order => {
+                document.getElementById('editPurchaseOrderId').value = order.purchase_order_id;
+                document.getElementById('editSupplierId').value = order.supplier_id;
+                document.getElementById('editEmployeeId').value = order.employee_id;
+
+                // Load products for this order
+                return fetch(`/api/purchase_orders/${purchaseOrderId}/products`);
+            })
+            .then(response => response.json())
+            .then(products => {
+                editSelectedProducts = products.map(p => ({
+                    product_id: p.product_id,
+                    product_name: p.product_name,
+                    price: p.price,
+                    quantity: p.quantity
+                }));
+
+                renderEditProductSelection();
+                document.getElementById('editOrderBox').style.display = 'block';
+            })
+            .catch(error => console.error('Error fetching purchase order details:', error));
+    }
+
+    function renderEditProductSelection() {
+        const container = document.getElementById('editProductSelection');
+
+        if (editSelectedProducts.length === 0) {
+            container.innerHTML = '<p>No products in this order</p>';
+            return;
+        }
+
+        let html = '<table class="table table-sm">';
+        html += '<thead><tr><th>Product</th><th>Price</th><th>Quantity</th><th>Subtotal</th></tr></thead>';
+        html += '<tbody>';
+
+        editSelectedProducts.forEach((product, index) => {
+            html += `
+                <tr>
+                    <td>${product.product_name}</td>
+                    <td>$${product.price.toFixed(2)}</td>
+                    <td>${product.quantity}</td>
+                    <td>$${(product.price * product.quantity).toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function cancelEdit() {
+        document.getElementById('editOrderBox').style.display = 'none';
+        document.getElementById('editOrderForm').reset();
+        editSelectedProducts = [];
+    }
+
+    // Edit form submission
+    const editOrderForm = document.getElementById('editOrderForm');
+    if (editOrderForm) {
+        editOrderForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const purchaseOrderId = document.getElementById('editPurchaseOrderId').value;
+            const formData = {
+                employee_id: document.getElementById('editEmployeeId').value,
+                supplier_id: document.getElementById('editSupplierId').value
+            };
+
+            fetch(`/api/purchase_orders/${purchaseOrderId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        alert(data.message);
+                        fetchOrders();
+                        document.getElementById('editOrderBox').style.display = 'none';
+                    } else {
+                        alert(data.error || 'Failed to update purchase order');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating purchase order:', error);
+                    alert('An error occurred while updating purchase order.');
+                });
+        });
+    }
+
+    function searchOrders() {
+        const attribute = document.getElementById('searchAttribute').value;
+        const value = document.getElementById('searchValue').value;
+
+        if (!value) {
+            alert('Please enter a search value');
+            return;
+        }
+
+        fetch('/searchPurchaseOrders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ attribute, value }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                const table = document.getElementById('mytable');
+                table.innerHTML = '';
+
+                if (data.error) {
+                    const errorRow = `<tr><td colspan="8" class="text-center text-danger">Error: ${data.error}</td></tr>`;
+                    table.insertAdjacentHTML('beforeend', errorRow);
+                    return;
+                }
+
+                if (data.purchase_orders.length === 0) {
+                    const noResultsRow = `<tr><td colspan="8" class="text-center">No results found</td></tr>`;
+                    table.insertAdjacentHTML('beforeend', noResultsRow);
+                    return;
+                }
+
+                data.purchase_orders.forEach(order => {
+                    const row = `<tr id="purchase-order-${order.purchase_order_id}">
+                    <td>${order.purchase_order_id}</td>
+                    <td>${order.supplier_id}</td>
+                    <td>${order.employee_id}</td>
+                    <td>$${parseFloat(order.total_price).toFixed(2)}</td>
+                    <td>${order.order_date}</td>
+                    <td>${order.expected_received_date}</td>
+                    <td>${order.actual_received_date || 'Not received yet'}</td>
+                    <td>
+                        <button class="btn btn-warning" onclick="editOrder(${order.purchase_order_id})">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteOrder(${order.purchase_order_id})">Delete</button>
+                        <button class="btn btn-info" onclick="viewOrderDetails(${order.purchase_order_id})">Details</button>
+                    </td>
+                </tr>`;
+                    table.insertAdjacentHTML('beforeend', row);
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const table = document.getElementById('mytable');
+                table.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Failed to search purchase orders</td></tr>';
+            });
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4"
+    crossorigin="anonymous"></script>
+</body>
+
+</html>
+
+{% endblock %}

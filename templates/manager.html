@@ -1,654 +1,224 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "managerbase.html" %}
 
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Order Management System</title>
+{% block title %}
+{% if show_profile %}Profile{% else %}Dashboard{% endif %} - Order Management System
+{% endblock %}
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet">
+{% block page_title %}
+{% if show_profile %}My Profile{% else %}Employee Dashboard{% endif %}
+{% endblock %}
 
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% block content %}
+{% if show_profile %}
+<!-- Profile View -->
+<div class="profile-container">
+    <div class="profile-header">
+        <div>
+            <h1>{{ employee.employee_name }}</h1>
+            <div class="employee-role">{{ employee.emp_role }}</div>
+        </div>
+        <div class="employee-id">ID: {{ employee.employee_id }}</div>
+    </div>
 
-    <style>
-        :root {
-            --primary-color: #4843a3;
-            --secondary-color: #6c757d;
-            --accent-color: #ff6b6b;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f8f9fa;
-            margin: 0;
-        }
-
-        .bg-primary-custom {
-            background-color: var(--primary-color);
-        }
-
-        .sidebar {
-            height: 100vh;
-            width: 250px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            background-color: var(--primary-color);
-            color: white;
-            padding-top: 20px;
-            transition: all 0.3s;
-            z-index: 1000;
-        }
-
-        .sidebar-collapsed {
-            width: 80px;
-        }
-
-        .sidebar-collapsed .nav-link-text {
-            display: none;
-        }
-
-        .sidebar-collapsed .logo-text {
-            display: none;
-        }
-
-        .main-content {
-            margin-left: 250px;
-            transition: all 0.3s;
-        }
-
-        .main-content-collapsed {
-            margin-left: 80px;
-        }
-
-        .nav-link {
-            color: rgba(255, 255, 255, 0.8);
-            padding: 12px 20px;
-            margin: 5px 0;
-            border-radius: 5px;
-            transition: all 0.3s;
-        }
-
-        .nav-link:hover {
-            color: white;
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .nav-link.active {
-            color: white;
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .nav-link i {
-            margin-right: 10px;
-            width: 20px;
-            text-align: center;
-        }
-
-        .card {
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            border: none;
-        }
-
-        .card-header {
-            background-color: white;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-            font-weight: 600;
-        }
-
-        .btn-primary-custom {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .btn-primary-custom:hover {
-            background-color: #3a357f;
-            border-color: #3a357f;
-        }
-
-        .employee-badge {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .hourly-badge {
-            background-color: #e3f2fd;
-            color: #1976d2;
-        }
-
-        .contract-badge {
-            background-color: #e8f5e9;
-            color: #388e3c;
-        }
-
-        .order-status {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .status-pending {
-            background-color: #fff3e0;
-            color: #fb8c00;
-        }
-
-        .status-processing {
-            background-color: #e3f2fd;
-            color: #1976d2;
-        }
-
-        .status-completed {
-            background-color: #e8f5e9;
-            color: #388e3c;
-        }
-
-        .toggle-btn {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-
-        .search-box {
-            position: relative;
-        }
-
-        .search-box i {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: var(--secondary-color);
-        }
-
-        .search-input {
-            padding-left: 35px;
-            border-radius: 20px;
-            border: 1px solid #dee2e6;
-        }
-
-        .table-responsive {
-            overflow-x: auto;
-        }
-
-        .table th {
-            font-weight: 600;
-            color: var(--secondary-color);
-            border-top: none;
-        }
-
-        .action-btn {
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 0.8rem;
-            margin-right: 5px;
-        }
-
-        .profile-img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 80px;
-            }
-
-            .sidebar .nav-link-text {
-                display: none;
-            }
-
-            .sidebar .logo-text {
-                display: none;
-            }
-
-            .main-content {
-                margin-left: 80px;
-            }
-        }
-    </style>
-</head>
-
-<body>
-    <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
-        <div class="d-flex flex-column h-100">
-            <!-- Logo -->
-            <div class="d-flex align-items-center justify-content-center mb-4">
-                <i class="fas fa-boxes fa-2x me-2"></i>
-                <span class="logo-text fs-4 fw-bold">OrderPro</span>
+    <div class="profile-section">
+        <h2>Contact Information</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{ employee.email_address }}</span>
             </div>
-
-            <!-- Toggle Button -->
-            <button class="toggle-btn mb-4" id="toggleSidebar">
-                <i class="fas fa-bars"></i>
-            </button>
-
-            <!-- Navigation -->
-            <ul class="nav flex-column flex-grow-1">
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-clipboard-list"></i>
-                        <span class="nav-link-text">Empolyee</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link active">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span class="nav-link-text">Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-clipboard-list"></i>
-                        <span class="nav-link-text">Orders</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-file-invoice-dollar"></i>
-                        <span class="nav-link-text">Purchase Orders</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-box-open"></i>
-                        <span class="nav-link-text">Inventory</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-truck"></i>
-                        <span class="nav-link-text">Suppliers</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-chart-line"></i>
-                        <span class="nav-link-text">Reports</span>
-                    </a>
-                </li>
-                <li class="nav-item mt-auto">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-cog"></i>
-                        <span class="nav-link-text">Settings</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span class="nav-link-text">Logout</span>
-                    </a>
-                </li>
-            </ul>
+            <div class="info-item">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">{{ employee.phone_number }}</span>
+            </div>
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="main-content" id="mainContent">
-        <!-- Top Navigation -->
-        <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-            <div class="container-fluid">
-                <div class="d-flex align-items-center">
-                    <button class="btn me-3 d-lg-none" id="mobileToggleSidebar">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <h5 class="mb-0">Order Management Dashboard</h5>
+    <div class="profile-section">
+        <h2>Employment Details</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Hire Date:</span>
+                <span class="info-value">{{ employee.hire_date }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Manager:</span>
+                {% if employee.manager_id %}
+                <div class="manager-info">
+                    <div><span class="info-label">Name:</span> {{ employee.manager_name }}</div>
+                    <div><span class="info-label">ID:</span> {{ employee.manager_id }}</div>
+                    <div><span class="info-label">Email:</span> {{ employee.manager_email }}</div>
                 </div>
+                {% else %}
+                <div class="no-manager">No manager assigned</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 
-                <div class="d-flex align-items-center">
-                    <div class="search-box me-3">
-                        <i class="fas fa-search"></i>
-                        <input type="text" class="form-control search-input" placeholder="Search...">
-                    </div>
-
-                    <div class="dropdown">
-                        <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle"
-                            id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <img src="https://via.placeholder.com/40" alt="User" class="profile-img me-2">
-                            <div class="d-none d-lg-block">
-                                <div class="fw-bold">John Doe</div>
-                                <div class="small text-muted">
-                                    <span id="employeeTypeBadge" class="employee-badge hourly-badge">Hourly
-                                        Employee</span>
-                                </div>
-                            </div>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                            <li><a class="dropdown-item" href="#">Profile</a></li>
-                            <li><a class="dropdown-item" href="#">Settings</a></li>
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-                            <li><a class="dropdown-item" href="#">Logout</a></li>
-                        </ul>
-                    </div>
+    <div class="profile-section">
+        <h2>Employment Type</h2>
+        {% if hourly_data %}
+        <div class="employment-type">
+            <h3>Hourly Employee</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Hours Worked:</span>
+                    <span class="info-value">{{ hourly_data.hours_worked }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Hourly Wage:</span>
+                    <span class="info-value">${{ "%.2f"|format(hourly_data.hourly_wages) }}</span>
                 </div>
             </div>
-        </nav>
-
-        <!-- Page Content -->
-        <div class="container-fluid py-4">
-            <!-- Employee Type Toggle -->
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Employee Information</h5>
-                            <div class="d-flex align-items-center">
-                                <div class="me-3">
-                                    <img src="https://via.placeholder.com/80" alt="User" class="rounded-circle"
-                                        width="80" height="80">
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h4>John Doe</h4>
-                                    <p class="mb-1">Order Processing Specialist</p>
-                                    <div class="d-flex align-items-center">
-                                        <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                                            <label class="btn btn-outline-primary active" id="hourlyBtn">
-                                                <input type="radio" name="employeeType" checked> Hourly Employee
-                                            </label>
-                                            <label class="btn btn-outline-success" id="contractBtn">
-                                                <input type="radio" name="employeeType"> Contract Employee
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="text-end">
-                                    <button class="btn btn-primary-custom">
-                                        <i class="fas fa-clock me-2"></i>Time Tracking
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        </div>
+        {% elif contract_data %}
+        <div class="employment-type">
+            <h3>Contract Employee</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Contract ID:</span>
+                    <span class="info-value">{{ contract_data.contract_id }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Start Date:</span>
+                    <span class="info-value">{{ contract_data.contract_start_date }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">End Date:</span>
+                    <span class="info-value">{{ contract_data.contract_end_date }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Salary:</span>
+                    <span class="info-value">${{ "{:,.2f}".format(contract_data.salary) }}</span>
                 </div>
             </div>
-
-            <!-- Quick Actions -->
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="card h-100">
-                        <div class="card-body text-center">
-                            <i class="fas fa-plus-circle fa-3x text-primary mb-3"></i>
-                            <h5>Create New Order</h5>
-                            <p class="text-muted">Start processing a new customer order</p>
-                            <button class="btn btn-primary-custom">Create Order</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card h-100">
-                        <div class="card-body text-center">
-                            <i class="fas fa-file-invoice-dollar fa-3x text-success mb-3"></i>
-                            <h5>Generate Purchase Order</h5>
-                            <p class="text-muted">Create a new purchase order for inventory</p>
-                            <button class="btn btn-primary-custom">Create PO</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card h-100">
-                        <div class="card-body text-center">
-                            <i class="fas fa-chart-bar fa-3x text-info mb-3"></i>
-                            <h5>View Reports</h5>
-                            <p class="text-muted">Analyze order processing metrics</p>
-                            <button class="btn btn-primary-custom">View Reports</button>
-                        </div>
-                    </div>
-                </div>
+        </div>
+        {% else %}
+        <div class="employment-type">
+            <p>No employment type data found</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<!-- Dashboard View -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Quick Stats</span>
+                <button class="btn btn-sm btn-outline-secondary">Refresh</button>
             </div>
-
-            <!-- Recent Orders -->
-            <div class="row">
-                <div class="col-md-8">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Recent Orders</h5>
-                            <div>
-                                <button class="btn btn-sm btn-outline-secondary me-2">
-                                    <i class="fas fa-filter"></i> Filter
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary">
-                                    <i class="fas fa-download"></i> Export
-                                </button>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Order #</th>
-                                            <th>Customer</th>
-                                            <th>Date</th>
-                                            <th>Items</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>ORD-1001</td>
-                                            <td>Acme Corp</td>
-                                            <td>2023-05-15</td>
-                                            <td>5</td>
-                                            <td><span class="order-status status-pending">Pending</span></td>
-                                            <td>
-                                                <button class="btn btn-sm action-btn btn-outline-primary">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-sm action-btn btn-outline-success">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>ORD-1002</td>
-                                            <td>Globex Inc</td>
-                                            <td>2023-05-14</td>
-                                            <td>3</td>
-                                            <td><span class="order-status status-processing">Processing</span></td>
-                                            <td>
-                                                <button class="btn btn-sm action-btn btn-outline-primary">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-sm action-btn btn-outline-success">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>ORD-1003</td>
-                                            <td>Initech</td>
-                                            <td>2023-05-13</td>
-                                            <td>8</td>
-                                            <td><span class="order-status status-completed">Completed</span></td>
-                                            <td>
-                                                <button class="btn btn-sm action-btn btn-outline-primary">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-sm action-btn btn-outline-secondary">
-                                                    <i class="fas fa-print"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>ORD-1004</td>
-                                            <td>Umbrella Corp</td>
-                                            <td>2023-05-12</td>
-                                            <td>2</td>
-                                            <td><span class="order-status status-processing">Processing</span></td>
-                                            <td>
-                                                <button class="btn btn-sm action-btn btn-outline-primary">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-sm action-btn btn-outline-success">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>ORD-1005</td>
-                                            <td>Stark Industries</td>
-                                            <td>2023-05-11</td>
-                                            <td>6</td>
-                                            <td><span class="order-status status-pending">Pending</span></td>
-                                            <td>
-                                                <button class="btn btn-sm action-btn btn-outline-primary">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-sm action-btn btn-outline-success">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h4 class="text-primary">12</h4>
+                        <p class="text-muted">New Orders</p>
                     </div>
-                </div>
-
-                <!-- Purchase Order Status -->
-                <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Purchase Order Status</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-4">
-                                <h6>Pending Approval</h6>
-                                <div class="progress mb-3">
-                                    <div class="progress-bar bg-warning" role="progressbar" style="width: 25%"></div>
-                                </div>
-                                <small class="text-muted">2 POs waiting for manager approval</small>
-                            </div>
-
-                            <div class="mb-4">
-                                <h6>Awaiting Delivery</h6>
-                                <div class="progress mb-3">
-                                    <div class="progress-bar bg-info" role="progressbar" style="width: 40%"></div>
-                                </div>
-                                <small class="text-muted">4 POs expected this week</small>
-                            </div>
-
-                            <div class="mb-4">
-                                <h6>Completed This Month</h6>
-                                <div class="progress mb-3">
-                                    <div class="progress-bar bg-success" role="progressbar" style="width: 75%"></div>
-                                </div>
-                                <small class="text-muted">12 POs fulfilled in May</small>
-                            </div>
-
-                            <hr>
-
-                            <button class="btn btn-primary-custom w-100">
-                                <i class="fas fa-plus me-2"></i>Create New Purchase Order
-                            </button>
-                        </div>
+                    <div class="col-md-4">
+                        <h4 class="text-warning">5</h4>
+                        <p class="text-muted">Pending</p>
                     </div>
-
-                    <!-- Recent Activity -->
-                    <div class="card mt-4">
-                        <div class="card-header">
-                            <h5 class="mb-0">Recent Activity</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-flex mb-3">
-                                <div class="flex-shrink-0">
-                                    <i class="fas fa-file-invoice-dollar text-primary"></i>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <p class="mb-0">Created PO #4502 for office supplies</p>
-                                    <small class="text-muted">2 hours ago</small>
-                                </div>
-                            </div>
-
-                            <div class="d-flex mb-3">
-                                <div class="flex-shrink-0">
-                                    <i class="fas fa-clipboard-check text-success"></i>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <p class="mb-0">Completed processing order ORD-1003</p>
-                                    <small class="text-muted">Yesterday, 3:45 PM</small>
-                                </div>
-                            </div>
-
-                            <div class="d-flex mb-3">
-                                <div class="flex-shrink-0">
-                                    <i class="fas fa-truck text-info"></i>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <p class="mb-0">Received shipment for PO #4498</p>
-                                    <small class="text-muted">Yesterday, 11:30 AM</small>
-                                </div>
-                            </div>
-
-                            <div class="d-flex">
-                                <div class="flex-shrink-0">
-                                    <i class="fas fa-exclamation-triangle text-warning"></i>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <p class="mb-0">Low inventory alert for paper products</p>
-                                    <small class="text-muted">May 14, 4:20 PM</small>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="col-md-4">
+                        <h4 class="text-success">$3,450</h4>
+                        <p class="text-muted">This Week</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap JS Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                Recent Activity
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Order #10025 processed</span>
+                        <small class="text-muted">2 hours ago</small>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>New purchase order created</span>
+                        <small class="text-muted">Yesterday</small>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Inventory updated</span>
+                        <small class="text-muted">2 days ago</small>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <!-- Custom JS -->
-    <script>
-        // Toggle sidebar
-        document.getElementById('toggleSidebar').addEventListener('click', function () {
-            document.getElementById('sidebar').classList.toggle('sidebar-collapsed');
-            document.getElementById('mainContent').classList.toggle('main-content-collapsed');
-        });
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Your Recent Orders</span>
+                <a href="{{ url_for('e_orders', employee_id=employee.employee_id) }}"
+                    class="btn btn-sm btn-primary-custom">View All</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>#10025</td>
+                                <td>John Smith</td>
+                                <td>2023-05-15</td>
+                                <td>$120.00</td>
+                                <td><span class="order-status status-completed">Completed</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary">View</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>#10024</td>
+                                <td>Sarah Johnson</td>
+                                <td>2023-05-14</td>
+                                <td>$85.50</td>
+                                <td><span class="order-status status-processing">Processing</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary">View</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>#10023</td>
+                                <td>Michael Brown</td>
+                                <td>2023-05-12</td>
+                                <td>$210.75</td>
+                                <td><span class="order-status status-pending">Pending</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary">View</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
 
-        // Mobile toggle
-        document.getElementById('mobileToggleSidebar').addEventListener('click', function () {
-            document.getElementById('sidebar').classList.toggle('show');
-        });
-
-        // Employee type toggle
-        document.getElementById('hourlyBtn').addEventListener('click', function () {
-            document.getElementById('employeeTypeBadge').className = 'employee-badge hourly-badge';
-            document.getElementById('employeeTypeBadge').textContent = 'Hourly Employee';
-            // Here you would add logic to handle hourly employee specific features
-        });
-
-        document.getElementById('contractBtn').addEventListener('click', function () {
-            document.getElementById('employeeTypeBadge').className = 'employee-badge contract-badge';
-            document.getElementById('employeeTypeBadge').textContent = 'Contract Employee';
-            // Here you would add logic to handle contract employee specific features
-        });
-
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function (event) {
-            const sidebar = document.getElementById('sidebar');
-            const mobileToggle = document.getElementById('mobileToggleSidebar');
-
-            if (window.innerWidth <= 768 && !sidebar.contains(event.target) && event.target !== mobileToggle) {
-                sidebar.classList.remove('show');
-            }
-        });
-    </script>
-</body>
-
-</html>
+{% block extra_js %}
+<script>
+    // Any additional JavaScript specific to the employee page can go here
+    console.log('Manager page loaded');
+</script>
+{% endblock %}
