@@ -1,668 +1,857 @@
 {% extends "managerbase.html" %}
 
-{% block page_title %}Purchase Orders{% endblock %}
+{% block title %}Purchase Orders Management{% endblock %}
+
+{% block page_title %}Purchase Orders Management{% endblock %}
 
 {% block content %}
-<div class="content">
-    <div class="container">
-        <div class="d-flex bd-highlight mb-3">
-            <div class="me-auto p-2 bd-highlight">
-                <h2>Purchase Orders</h2>
-            </div>
-            <div class="p-2 bd-highlight">
-                <button type="button" class="btn btn-secondary" onclick="showOrderCreateBox()">Create New
-                    Purchase Order</button>
-            </div>
-        </div>
-        <!-- Search functionality -->
-        <div class="d-flex mb-3">
-            <select id="searchAttribute" class="form-select" style="width: 200px; margin-right: 10px;">
-                <option value="purchase_order_id">Purchase Order ID</option>
-                <option value="supplier_id">Supplier ID</option>
-                <option value="employee_id">Employee ID</option>
-                <option value="total_price">Total Price</option>
-            </select>
-            <input type="text" id="searchValue" class="form-control" placeholder="Search...">
-            <button class="btn btn-secondary" onclick="fetchOrders()"
-                style="margin-left: 10px; background-color: green;">Reload</button>
-            <button class="btn btn-primary" onclick="searchOrders()" style="margin-left: 10px;">Search</button>
-        </div>
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">Purchase Order ID</th>
-                        <th scope="col">Supplier ID</th>
-                        <th scope="col">Employee ID</th>
-                        <th scope="col">Total Price</th>
-                        <th scope="col">Order Date</th>
-                        <th scope="col">Expected Date</th>
-                        <th scope="col">Received Date</th>
-                        <th scope="col">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="mytable">
-                    <tr>
-                        <th scope="row" colspan="8">Loading...</th>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Edit Order Section -->
-        <div id="editOrderBox" style="display: none;">
-            <div class="card">
-                <div class="card-header">
-                    Edit Purchase Order
-                </div>
-                <div class="card-body">
-                    <!-- Form to edit order -->
-                    <form id="editOrderForm">
-                        <input type="hidden" id="editPurchaseOrderId">
-                        <div class="mb-3">
-                            <label for="editSupplierId" class="form-label">Supplier ID</label>
-                            <input type="number" class="form-control" id="editSupplierId" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="editEmployeeId" class="form-label">Employee ID</label>
-                            <input type="number" class="form-control" id="editEmployeeId" required>
-                        </div>
-
-                        <!-- Product selection for editing -->
-                        <div class="mb-3">
-                            <label class="form-label">Products</label>
-                            <div id="editProductSelection" class="border p-3">
-                                <!-- Products will be loaded here -->
-                                <p>Loading products...</p>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary">Update</button>
-                        <button type="button" class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
-                    </form>
-                </div>
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Purchase Orders</h5>
+            <div>
+                <button class="btn btn-primary-custom btn-sm" onclick="fetchPurchaseOrders()">
+                    <i class="fas fa-sync-alt me-1"></i> Reload
+                </button>
+                <button class="btn btn-success btn-sm ms-2" onclick="showCreatePurchaseOrderModal()">
+                    <i class="fas fa-plus me-1"></i> New Purchase Order
+                </button>
             </div>
         </div>
-
-        <!-- Create Order Section -->
-        <div id="createOrderBox" style="display: none;">
-            <div class="card">
-                <div class="card-header">
-                    Create New Purchase Order
+        <div class="card-body">
+            <!-- Search functionality -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <select id="searchAttribute" class="form-select" onchange="toggleSearchInput()">
+                        <option value="purchase_order_id">Purchase Order ID</option>
+                        <option value="supplier_id">Supplier ID</option>
+                        <option value="employee_id">Employee ID</option>
+                        <option value="delivery_status">Delivery Status</option>
+                        <option value="is_valid">Order Status</option>
+                    </select>
                 </div>
-                <div class="container mt-5">
-                    <h2 class="mb-4">Create New Purchase Order</h2>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" id="searchValue" class="form-control" placeholder="Search...">
+                        <select id="statusValue" class="form-select d-none">
+                            <option value="pending">Pending</option>
+                            <option value="Received">Received</option>
+                            <option value="Shipped">Shipped</option>
+                        </select>
+                        <select id="isValidValue" class="form-select d-none">
+                            <option value="true">Active</option>
+                            <option value="false">Inactive</option>
+                        </select>
+                        <button class="btn btn-primary-custom" onclick="searchPurchaseOrders()">
+                            <i class="fas fa-search me-1"></i> Search
+                        </button>
+                        <button class="btn btn-secondary" onclick="clearSearch()">
+                            <i class="fas fa-times me-1"></i> Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
 
-                    <div class="product-selection">
-                        <h4>Select Products</h4>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <select id="productSelect" class="form-select">
-                                    <option value="">Select a product</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <input type="number" id="productQuantity" class="form-control" placeholder="Quantity"
-                                    min="1" value="1">
-                            </div>
-                            <div class="col-md-3">
-                                <button class="btn btn-primary w-100" onclick="addProduct()">Add Product</button>
-                            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">Purchase Order ID</th>
+                            <th scope="col">Supplier ID</th>
+                            <th scope="col">Employee ID</th>
+                            <th scope="col">Order Date</th>
+                            <th scope="col">Expected Date</th>
+                            <th scope="col">Received Date</th>
+                            <th scope="col"> Delivery Status</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="purchaseOrdersTable">
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Purchase Order Details Modal -->
+<div class="modal fade" id="purchaseOrderDetailsModal" tabindex="-1" aria-labelledby="purchaseOrderDetailsModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="purchaseOrderDetailsModalLabel">Purchase Order #<span id="modalPOId"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong>Supplier ID:</strong> <span id="modalSupplierId"></span></p>
+                        <p><strong>Employee ID:</strong> <span id="modalEmployeeId"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Order Date:</strong> <span id="modalOrderDate"></span></p>
+                        <p><strong>Expected Date:</strong> <span id="modalExpectedDate"></span></p>
+                        <p><strong>Received Date:</strong> <span id="modalReceivedDate"></span></p>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Product ID</th>
+                                <th>Product Name</th>
+                                <th>Price</th>
+                                <th>Quantity</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="purchaseOrderDetailsTable">
+                            <!-- Purchase order details will be populated here -->
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="4" class="text-end">Total:</th>
+                                <th id="poTotalPrice">$0.00</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="updateStatusBtn" onclick="updatePOStatus()">Update
+                    Status</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Purchase Order Modal -->
+<div class="modal fade" id="createPurchaseOrderModal" tabindex="-1" aria-labelledby="createPurchaseOrderModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createPurchaseOrderModalLabel">Create New Purchase Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createPOForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="supplierId" class="form-label">Supplier ID</label>
+                            <input type="number" class="form-control" id="supplierId" required>
+                            <div class="invalid-feedback">Please select a valid supplier</div>
                         </div>
-
-                        <div id="selectedProductsContainer">
-                            <h5>Selected Products</h5>
-                            <div id="selectedProducts" class="mb-3">
-                                <p class="text-muted">No products selected yet</p>
-                            </div>
+                        <div class="col-md-6">
+                            <label for="expectedDate" class="form-label">Expected Delivery Date</label>
+                            <input type="date" class="form-control" id="expectedDate" required>
+                            <div class="invalid-feedback">Expected date must be after today</div>
                         </div>
                     </div>
 
-                    <div class="order-summary">
-                        <h4>Order Summary</h4>
-                        <form id="purchaseOrderForm">
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label for="supplierId" class="form-label">Supplier ID</label>
-                                    <input type="number" class="form-control" id="supplierId" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="employeeId" class="form-label">Employee ID</label>
-                                    <input type="number" class="form-control" id="employeeId" required>
-                                </div>
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Products</h6>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="addProductRow()">
+                                <i class="fas fa-plus me-1"></i> Add Product
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table" id="productsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Product ID</th>
+                                            <th>Product Name</th>
+                                            <th>Price</th>
+                                            <th>Quantity</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="productsTableBody">
+                                        <!-- Product rows will be added here -->
+                                    </tbody>
+                                </table>
                             </div>
-
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label for="orderDate" class="form-label">Order Date</label>
-                                    <input type="date" class="form-control" id="orderDate" readonly>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="expectedDate" class="form-label">Expected Received Date</label>
-                                    <input type="date" class="form-control" id="expectedDate" required>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="totalPrice" class="form-label">Total Price</label>
-                                <input type="text" class="form-control" id="totalPrice" readonly value="0.00">
-                            </div>
-
-                            <div class="d-flex justify-content-end">
-                                <button type="button" class="btn btn-secondary me-2"
-                                    onclick="clearForm()">Cancel</button>
-                                <button type="submit" class="btn btn-primary">Submit Order</button>
-                            </div>
-                        </form>
+                        </div>
                     </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createPurchaseOrder()">Create Purchase
+                    Order</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Status Modal -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1" aria-labelledby="updateStatusModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updateStatusModalLabel">Update Purchase Order Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="newStatus" class="form-label">Status</label>
+                    <select class="form-select" id="newStatus">
+                        <option value="pending">Pending</option>
+                        <option value="Received">Received</option>
+                        <option value="Shipped">Shipped</option>
+                    </select>
                 </div>
+                <div class="mb-3" id="receivedDateContainer" style="display: none;">
+                    <label for="receivedDate" class="form-label">Received Date</label>
+                    <input type="date" class="form-control" id="receivedDate">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="confirmStatusUpdate()">Update</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Global variables to store products and selected products
-    let products = [];
-    let selectedProducts = [];
-    let editSelectedProducts = [];
+    let currentPOId = null;
+    let productsData = [];
 
     document.addEventListener("DOMContentLoaded", function () {
-        fetchOrders();
+        fetchPurchaseOrders();
         fetchProducts();
-        const today = new Date().toISOString().split('T')[0];
-
-        // Set order date only if element exists
-        const orderDateElement = document.getElementById('orderDate');
-        if (orderDateElement) {
-            orderDateElement.value = today;
-        }
-
-        // FIXED: Only attach one event listener to the correct form
-        const purchaseOrderForm = document.getElementById('purchaseOrderForm');
-        if (purchaseOrderForm) {
-            purchaseOrderForm.addEventListener('submit', submitOrder);
-        }
     });
 
-    function fetchProducts() {
-        console.log('Fetching products...'); // Debug log
-        fetch('/api/products')
-            .then(response => {
-                console.log('Response status:', response.status); // Debug log
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
+    function toggleSearchInput() {
+        const searchAttribute = document.getElementById('searchAttribute').value;
+        const searchValue = document.getElementById('searchValue');
+        const statusDropdown = document.getElementById('statusValue');
+        const isValidDropdown = document.getElementById('isValidValue');
+
+        searchValue.classList.add('d-none');
+        statusDropdown.classList.add('d-none');
+        isValidDropdown.classList.add('d-none');
+
+        if (searchAttribute === 'delivery_status') {
+            statusDropdown.classList.remove('d-none');
+        } else if (searchAttribute === 'is_valid') {
+            isValidDropdown.classList.remove('d-none');
+        } else {
+            searchValue.classList.remove('d-none');
+        }
+    }
+
+    function clearSearch() {
+        document.getElementById('searchValue').value = '';
+        document.getElementById('statusValue').value = 'pending';
+        document.getElementById('searchAttribute').value = 'purchase_order_id';
+        toggleSearchInput();
+        fetchPurchaseOrders();
+    }
+
+    function fetchPurchaseOrders() {
+        // Show loading state
+        const tableBody = document.getElementById('purchaseOrdersTable');
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        // Fetch purchase orders
+        fetch('/api/manager/purchase-orders')
+            .then(response => response.json())
             .then(data => {
-                console.log('Products received:', data); // Debug log
-                products = data;
-                populateProductDropdown();
+                displayPurchaseOrders(data);
             })
             .catch(error => {
-                console.error('Error fetching products:', error);
-                // Show user-friendly error message
-                const select = document.getElementById('productSelect');
-                if (select) {
-                    select.innerHTML = '<option value="">Error loading products</option>';
-                }
-            });
-    }
-
-    function populateProductDropdown() {
-        const select = document.getElementById('productSelect');
-
-        // Check if the select element exists
-        if (!select) {
-            console.error('Product select element not found');
-            return;
-        }
-
-        // Clear existing options
-        select.innerHTML = '<option value="">Select a product</option>';
-
-        // Check if products array exists and has items
-        if (!products || !Array.isArray(products) || products.length === 0) {
-            console.log('No products available or products is not an array:', products);
-            select.innerHTML = '<option value="">No products available</option>';
-            return;
-        }
-
-        console.log('Populating dropdown with', products.length, 'products'); // Debug log
-
-        // Populate dropdown with products
-        products.forEach((product, index) => {
-            console.log(`Adding product ${index}:`, product); // Debug log
-
-            // Validate product object has required properties
-            if (!product.product_id) {
-                console.warn('Product missing product_id:', product);
-                return;
-            }
-
-            const option = document.createElement('option');
-            option.value = product.product_id;
-
-            // Handle missing product_name or price gracefully
-            const productName = product.product_name || 'Unknown Product';
-            const productPrice = product.price !== undefined ? product.price : 0;
-
-            option.textContent = `${productName} - $${parseFloat(productPrice).toFixed(2)}`;
-            select.appendChild(option);
-        });
-
-        console.log('Dropdown populated successfully');
-    }
-
-    function showOrderCreateBox() {
-        selectedProducts = []; // Reset selected products
-        document.getElementById('createOrderBox').style.display = 'block';
-        document.getElementById('selectedProducts').innerHTML = '<p class="text-muted">No products selected yet</p>';
-        document.getElementById('totalPrice').value = '0.00';
-
-        // Ensure products are fetched and dropdown is populated
-        if (!products || products.length === 0) {
-            console.log('Products not loaded, fetching...');
-            fetchProducts();
-        } else {
-            console.log('Products already loaded, repopulating dropdown...');
-            populateProductDropdown();
-        }
-    }
-
-    function addProduct() {
-        const productId = parseInt(document.getElementById('productSelect').value);
-        const quantity = parseInt(document.getElementById('productQuantity').value);
-
-        if (!productId || isNaN(quantity) || quantity <= 0) {
-            alert('Please select a product and enter a valid quantity');
-            return;
-        }
-
-        const product = products.find(p => p.product_id === productId);
-        if (!product) {
-            alert('Selected product not found');
-            return;
-        }
-
-        // Check if product already exists in selection
-        const existingIndex = selectedProducts.findIndex(p => p.product_id === productId);
-        if (existingIndex >= 0) {
-            selectedProducts[existingIndex].quantity += quantity;
-        } else {
-            selectedProducts.push({
-                product_id: productId,
-                product_name: product.product_name,
-                price: product.price,
-                quantity: quantity
-            });
-        }
-
-        updateSelectedProductsDisplay();
-        calculateTotalPrice();
-
-        // Reset selection
-        document.getElementById('productSelect').value = '';
-        document.getElementById('productQuantity').value = 1;
-    }
-
-    function updateSelectedProductsDisplay() {
-        const container = document.getElementById('selectedProducts');
-
-        if (selectedProducts.length === 0) {
-            container.innerHTML = '<p class="text-muted">No products selected yet</p>';
-            return;
-        }
-
-        let html = '<table class="table table-sm">';
-        html += '<thead><tr><th>Product</th><th>Price</th><th>Quantity</th><th>Subtotal</th><th>Action</th></tr></thead>';
-        html += '<tbody>';
-
-        selectedProducts.forEach((product, index) => {
-            html += `
+                console.error('Error fetching purchase orders:', error);
+                tableBody.innerHTML = `
                     <tr>
-                        <td>${product.product_name}</td>
-                        <td>$${product.price.toFixed(2)}</td>
-                        <td>${product.quantity}</td>
-                        <td>$${(product.price * product.quantity).toFixed(2)}</td>
-                        <td><button class="btn btn-sm btn-danger" onclick="removeProduct(${index})">Remove</button></td>
+                        <td colspan="8" class="text-center text-danger py-4">
+                            Error loading purchase orders. Please try again.
+                        </td>
                     </tr>
                 `;
-        });
-
-        html += '</tbody></table>';
-        container.innerHTML = html;
+            });
     }
 
-    function removeProduct(index) {
-        selectedProducts.splice(index, 1);
-        updateSelectedProductsDisplay();
-        calculateTotalPrice();
-    }
+    function searchPurchaseOrders() {
+        const searchAttribute = document.getElementById('searchAttribute').value;
+        let searchValue;
 
-    function calculateTotalPrice() {
-        const total = selectedProducts.reduce((sum, product) => sum + (product.price * product.quantity), 0);
-        const totalPriceElement = document.getElementById('totalPrice');
-        if (totalPriceElement) {
-            totalPriceElement.value = total.toFixed(2);
+        if (searchAttribute === 'delivery_status') {
+            searchValue = document.getElementById('statusValue').value;
+        } else {
+            searchValue = document.getElementById('searchValue').value.trim();
         }
+
+        // Show loading state
+        const tableBody = document.getElementById('purchaseOrdersTable');
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (searchValue) {
+            params.append('search_by', searchAttribute);
+            params.append('search_value', searchValue);
+        }
+
+        // Fetch purchase orders with search parameters
+        fetch(`/api/manager/purchase-orders?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                displayPurchaseOrders(data);
+            })
+            .catch(error => {
+                console.error('Error searching purchase orders:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-danger py-4">
+                            Error searching purchase orders. Please try again.
+                        </td>
+                    </tr>
+                `;
+            });
     }
 
-    function submitOrder(event) {
-        event.preventDefault();
-        console.log('submitOrder called'); // Debug log
+    function displayPurchaseOrders(data) {
+        const tableBody = document.getElementById('purchaseOrdersTable');
+        tableBody.innerHTML = '';
 
-        if (selectedProducts.length === 0) {
-            alert('Please add at least one product to the order');
+        if (data.error) {
+            tableBody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center text-danger py-4">
+                    Error loading purchase orders: ${data.error}
+                </td>
+            </tr>
+        `;
             return;
         }
 
-        const orderData = {
-            supplier_id: parseInt(document.getElementById('supplierId').value),
-            employee_id: parseInt(document.getElementById('employeeId').value),
-            expected_received_date: document.getElementById('expectedDate').value,
-            products: selectedProducts.map(p => ({
-                product_id: p.product_id,
-                quantity: p.quantity,
-                price: p.price
-            }))
-        };
+        if (data.length === 0) {
+            tableBody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center text-muted py-4">
+                    No purchase orders found matching your criteria
+                </td>
+            </tr>
+        `;
+            return;
+        }
 
-        console.log('Submitting order data:', orderData); // Debug log
+        data.forEach(po => {
+            const statusClass = getPOStatusClass(po.delivery_status);
+            const statusText = getPOStatusText(po.delivery_status);
+            const isValidClass = po.is_valid ? 'bg-success' : 'bg-secondary';
+            const isValidText = po.is_valid ? 'Active' : 'Inactive';
 
-        fetch('/api/purchase_orders', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(orderData)
+            let actions = `
+            <button class="btn btn-sm btn-primary" onclick="viewPODetails(${po.purchase_order_id})">
+                <i class="fas fa-eye me-1"></i> View Details
+            </button>
+        `;
+
+            if (po.delivery_status === 'pending' && po.is_valid) {
+                actions += `
+                <button class="btn btn-sm btn-danger ms-1" onclick="softDeletePO(${po.purchase_order_id})">
+                    <i class="fas fa-trash me-1"></i> Delete
+                </button>
+            `;
+            }
+
+            if (!po.is_valid) {
+                actions += `
+                <button class="btn btn-sm btn-success ms-1" onclick="reactivatePO(${po.purchase_order_id})">
+                    <i class="fas fa-undo me-1"></i> Reactivate
+                </button>
+            `;
+            }
+
+            const row = `
+            <tr id="po-${po.purchase_order_id}">
+                <td>${po.purchase_order_id}</td>
+                <td>${po.supplier_id}</td>
+                <td>${po.employee_id}</td>
+                <td>${formatDate(po.order_date)}</td>
+                <td>${formatDate(po.expected_received_date)}</td>
+                <td>${po.actual_received_date ? formatDate(po.actual_received_date) : 'N/A'}</td>
+                <td><span class="badge ${statusClass}">${statusText}</span></td>
+                <td><span class="badge ${isValidClass}">${isValidText}</span></td>
+                <td>
+                    <div class="d-flex">
+                        ${actions}
+                    </div>
+                </td>
+            </tr>
+        `;
+            tableBody.innerHTML += row;
+        });
+    }
+
+    function softDeletePO(purchaseOrderId) {
+        if (!confirm('Are you sure you want to delete this purchase order? This can be undone.')) {
+            return;
+        }
+
+        fetch(`/api/manager/purchase-orders/${purchaseOrderId}`, {
+            method: 'DELETE'
         })
             .then(response => response.json())
             .then(data => {
-                if (data.message) {
-                    alert(data.message);
-                    clearForm();
-                    fetchOrders(); // Refresh the orders table
-                    document.getElementById('createOrderBox').style.display = 'none';
+                if (data.error) {
+                    alert('Error deleting purchase order: ' + data.error);
                 } else {
-                    alert(data.error || 'Failed to create purchase order');
+                    alert('Purchase order deleted successfully!');
+                    fetchPurchaseOrders();
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while creating the order');
+                console.error('Error deleting purchase order:', error);
+                alert('Error deleting purchase order. Please try again.');
             });
     }
 
-    function clearForm() {
-        selectedProducts = [];
-        updateSelectedProductsDisplay();
-        calculateTotalPrice();
-        const form = document.getElementById('purchaseOrderForm');
-        if (form) {
-            form.reset();
-        }
-        const today = new Date().toISOString().split('T')[0];
-        const orderDateElement = document.getElementById('orderDate');
-        if (orderDateElement) {
-            orderDateElement.value = today;
+    function reactivatePO(purchaseOrderId) {
+        if (!confirm('Are you sure you want to reactivate this purchase order?')) {
+            return;
         }
 
-        // Hide the create order box
-        document.getElementById('createOrderBox').style.display = 'none';
-    }
-
-    function cancelCreate() {
-        clearForm();
-    }
-
-    function fetchOrders() {
-        fetch('/api/purchase_orders')
+        fetch(`/api/manager/purchase-orders/${purchaseOrderId}/reactivate`, {
+            method: 'PUT'
+        })
             .then(response => response.json())
             .then(data => {
-                const tableBody = document.getElementById('mytable');
-                tableBody.innerHTML = ''; // Clear previous data
+                if (data.error) {
+                    alert('Error reactivating purchase order: ' + data.error);
+                } else {
+                    alert('Purchase order reactivated successfully!');
+                    fetchPurchaseOrders();
+                }
+            })
+            .catch(error => {
+                console.error('Error reactivating purchase order:', error);
+                alert('Error reactivating purchase order. Please try again.');
+            });
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString();
+    }
+
+    function getPOStatusClass(status) {
+        switch (status) {
+            case 'pending': return 'bg-warning text-dark';
+            case 'Received': return 'bg-success';
+            case 'Shipped': return 'bg-success';
+            default: return 'bg-warning text-dark';
+        }
+    }
+
+    function getPOStatusText(status) {
+        if (!status) return 'Unknown';
+        return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+
+    function viewPODetails(purchaseOrderId) {
+        currentPOId = purchaseOrderId;
+
+        // Show loading state in modal
+        document.getElementById('purchaseOrderDetailsTable').innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        // Fetch purchase order details
+        fetch(`/api/manager/purchase-order-details/${purchaseOrderId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Set basic PO info
+                document.getElementById('modalPOId').textContent = purchaseOrderId;
+
+                // Fetch the main PO to get other details
+                fetch(`/api/manager/purchase-orders?search_by=purchase_order_id&search_value=${purchaseOrderId}`)
+                    .then(response => response.json())
+                    .then(poData => {
+                        if (poData.length > 0) {
+                            const po = poData[0];
+                            document.getElementById('modalSupplierId').textContent = po.supplier_id;
+                            document.getElementById('modalEmployeeId').textContent = po.employee_id;
+                            document.getElementById('modalOrderDate').textContent = formatDate(po.order_date);
+                            document.getElementById('modalExpectedDate').textContent = formatDate(po.expected_received_date);
+                            document.getElementById('modalReceivedDate').textContent = po.actual_received_date ? formatDate(po.actual_received_date) : 'Not received yet';
+
+                            // Show/hide update status button based on current status
+                            const updateBtn = document.getElementById('updateStatusBtn');
+                            if (po.delivery_status === 'Received' || po.delivery_status === 'Shipped') {
+                                updateBtn.classList.add('d-none');
+                            } else {
+                                updateBtn.classList.remove('d-none');
+                            }
+                        }
+                    });
+
+                // Populate PO details table
+                const detailsTable = document.getElementById('purchaseOrderDetailsTable');
+                detailsTable.innerHTML = '';
+
+                let totalPrice = 0;
 
                 if (data.error) {
-                    console.error(data.error);
-                    tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error: ${data.error}</td></tr>`;
+                    detailsTable.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center text-danger py-4">
+                                Error loading purchase order details: ${data.error}
+                            </td>
+                        </tr>
+                    `;
                     return;
                 }
 
                 if (data.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No purchase orders found</td></tr>';
+                    detailsTable.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                No products found for this purchase order
+                            </td>
+                        </tr>
+                    `;
                     return;
                 }
 
-                data.forEach(order => {
+                data.forEach(item => {
+                    const subtotal = item.price * item.quantity;
+                    totalPrice += subtotal;
+
                     const row = `
-                    <tr id="purchase-order-${order.purchase_order_id}">
-                        <td>${order.purchase_order_id}</td>
-                        <td>${order.supplier_id}</td>
-                        <td>${order.employee_id}</td>
-                        <td>$${parseFloat(order.total_price).toFixed(2)}</td>
-                        <td>${order.order_date || 'N/A'}</td>
-                        <td>${order.expected_received_date || 'N/A'}</td>
-                        <td>${order.actual_received_date || 'Not received yet'}</td>
-                        <td>
-                            <button class="btn btn-warning" onclick="editOrder(${order.purchase_order_id})">Edit</button>
-                            <button class="btn btn-danger" onclick="deleteOrder(${order.purchase_order_id})">Delete</button>
-                            <button class="btn btn-info" onclick="viewOrderDetails(${order.purchase_order_id})">Details</button>
+                        <tr>
+                            <td>${item.product_id}</td>
+                            <td>${item.product_name || 'Unknown Product'}</td>
+                            <td>$${item.price.toFixed(2)}</td>
+                            <td>${item.quantity}</td>
+                            <td>$${subtotal.toFixed(2)}</td>
+                        </tr>
+                    `;
+                    detailsTable.innerHTML += row;
+                });
+
+                // Update total price
+                document.getElementById('poTotalPrice').textContent = `$${totalPrice.toFixed(2)}`;
+
+                // Show the modal
+                const modal = new bootstrap.Modal(document.getElementById('purchaseOrderDetailsModal'));
+                modal.show();
+            })
+            .catch(error => {
+                console.error('Error fetching purchase order details:', error);
+                document.getElementById('purchaseOrderDetailsTable').innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-danger py-4">
+                            Error loading purchase order details. Please try again.
                         </td>
                     </tr>
                 `;
-                    tableBody.innerHTML += row;
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching purchase orders:', error);
-                const tableBody = document.getElementById('mytable');
-                tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Failed to load purchase orders</td></tr>';
             });
     }
 
-    function viewOrderDetails(purchaseOrderId) {
-        fetch(`/api/purchase_orders/${purchaseOrderId}/products`)
-            .then(response => response.json())
-            .then(products => {
-                let html = 'Ordered Products:\n\n';
-                let total = 0;
-
-                products.forEach(product => {
-                    const subtotal = product.price * product.quantity;
-                    total += subtotal;
-                    html += `${product.product_name} - $${product.price.toFixed(2)} x ${product.quantity} = $${subtotal.toFixed(2)}\n`;
-                });
-
-                html += `\nTotal: $${total.toFixed(2)}`;
-                alert(html);
-            })
-            .catch(error => {
-                console.error('Error fetching order details:', error);
-                alert('Failed to load order details');
-            });
+    function updatePOStatus() {
+        // Show the update status modal
+        const modal = new bootstrap.Modal(document.getElementById('updateStatusModal'));
+        modal.show();
     }
 
-    function deleteOrder(purchaseOrderId) {
-        if (confirm('Are you sure you want to delete this purchase order?')) {
-            fetch(`/api/purchase_orders/${purchaseOrderId}`, {
-                method: 'DELETE'
-            })
-                .then(response => {
-                    if (response.ok) {
-                        document.querySelector(`#purchase-order-${purchaseOrderId}`).remove();
-                        alert('Purchase order deleted successfully!');
-                    } else {
-                        alert('Failed to delete purchase order.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error deleting purchase order:', error);
-                    alert('An error occurred while deleting purchase order.');
-                });
-        }
-    }
+    function confirmStatusUpdate() {
+        const newStatus = document.getElementById('newStatus').value;
+        const receivedDate = document.getElementById('receivedDate').value;
 
-    function editOrder(purchaseOrderId) {
-        fetch(`/api/purchase_orders/${purchaseOrderId}`)
-            .then(response => response.json())
-            .then(order => {
-                document.getElementById('editPurchaseOrderId').value = order.purchase_order_id;
-                document.getElementById('editSupplierId').value = order.supplier_id;
-                document.getElementById('editEmployeeId').value = order.employee_id;
+        // Show loading state
+        const updateBtn = document.querySelector('#updateStatusModal .btn-primary');
+        updateBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
+        updateBtn.disabled = true;
 
-                // Load products for this order
-                return fetch(`/api/purchase_orders/${purchaseOrderId}/products`);
-            })
-            .then(response => response.json())
-            .then(products => {
-                editSelectedProducts = products.map(p => ({
-                    product_id: p.product_id,
-                    product_name: p.product_name,
-                    price: p.price,
-                    quantity: p.quantity
-                }));
+        // Prepare data for the request
+        const data = {
+            status: newStatus
+        };
 
-                renderEditProductSelection();
-                document.getElementById('editOrderBox').style.display = 'block';
-            })
-            .catch(error => console.error('Error fetching purchase order details:', error));
-    }
-
-    function renderEditProductSelection() {
-        const container = document.getElementById('editProductSelection');
-
-        if (editSelectedProducts.length === 0) {
-            container.innerHTML = '<p>No products in this order</p>';
-            return;
+        if (newStatus === 'Received' && receivedDate) {
+            data.received_date = receivedDate;
         }
 
-        let html = '<table class="table table-sm">';
-        html += '<thead><tr><th>Product</th><th>Price</th><th>Quantity</th><th>Subtotal</th></tr></thead>';
-        html += '<tbody>';
-
-        editSelectedProducts.forEach((product, index) => {
-            html += `
-                <tr>
-                    <td>${product.product_name}</td>
-                    <td>$${product.price.toFixed(2)}</td>
-                    <td>${product.quantity}</td>
-                    <td>$${(product.price * product.quantity).toFixed(2)}</td>
-                </tr>
-            `;
-        });
-
-        html += '</tbody></table>';
-        container.innerHTML = html;
-    }
-
-    function cancelEdit() {
-        document.getElementById('editOrderBox').style.display = 'none';
-        document.getElementById('editOrderForm').reset();
-        editSelectedProducts = [];
-    }
-
-    // Edit form submission
-    const editOrderForm = document.getElementById('editOrderForm');
-    if (editOrderForm) {
-        editOrderForm.addEventListener('submit', function (event) {
-            event.preventDefault();
-
-            const purchaseOrderId = document.getElementById('editPurchaseOrderId').value;
-            const formData = {
-                employee_id: document.getElementById('editEmployeeId').value,
-                supplier_id: document.getElementById('editSupplierId').value
-            };
-
-            fetch(`/api/purchase_orders/${purchaseOrderId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.message) {
-                        alert(data.message);
-                        fetchOrders();
-                        document.getElementById('editOrderBox').style.display = 'none';
-                    } else {
-                        alert(data.error || 'Failed to update purchase order');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error updating purchase order:', error);
-                    alert('An error occurred while updating purchase order.');
-                });
-        });
-    }
-
-    function searchOrders() {
-        const attribute = document.getElementById('searchAttribute').value;
-        const value = document.getElementById('searchValue').value;
-
-        if (!value) {
-            alert('Please enter a search value');
-            return;
-        }
-
-        fetch('/searchPurchaseOrders', {
-            method: 'POST',
+        // Send the update request
+        fetch(`/api/manager/purchase-orders/${currentPOId}/status`, {
+            method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ attribute, value }),
+            body: JSON.stringify(data)
         })
             .then(response => response.json())
             .then(data => {
-                const table = document.getElementById('mytable');
-                table.innerHTML = '';
-
                 if (data.error) {
-                    const errorRow = `<tr><td colspan="8" class="text-center text-danger">Error: ${data.error}</td></tr>`;
-                    table.insertAdjacentHTML('beforeend', errorRow);
-                    return;
+                    alert('Error updating status: ' + data.error);
+                } else {
+                    // Close the modals and refresh the data
+                    bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
+                    bootstrap.Modal.getInstance(document.getElementById('purchaseOrderDetailsModal')).hide();
+                    fetchPurchaseOrders();
                 }
-
-                if (data.purchase_orders.length === 0) {
-                    const noResultsRow = `<tr><td colspan="8" class="text-center">No results found</td></tr>`;
-                    table.insertAdjacentHTML('beforeend', noResultsRow);
-                    return;
-                }
-
-                data.purchase_orders.forEach(order => {
-                    const row = `<tr id="purchase-order-${order.purchase_order_id}">
-                    <td>${order.purchase_order_id}</td>
-                    <td>${order.supplier_id}</td>
-                    <td>${order.employee_id}</td>
-                    <td>$${parseFloat(order.total_price).toFixed(2)}</td>
-                    <td>${order.order_date}</td>
-                    <td>${order.expected_received_date}</td>
-                    <td>${order.actual_received_date || 'Not received yet'}</td>
-                    <td>
-                        <button class="btn btn-warning" onclick="editOrder(${order.purchase_order_id})">Edit</button>
-                        <button class="btn btn-danger" onclick="deleteOrder(${order.purchase_order_id})">Delete</button>
-                        <button class="btn btn-info" onclick="viewOrderDetails(${order.purchase_order_id})">Details</button>
-                    </td>
-                </tr>`;
-                    table.insertAdjacentHTML('beforeend', row);
-                });
             })
             .catch(error => {
-                console.error('Error:', error);
-                const table = document.getElementById('mytable');
-                table.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Failed to search purchase orders</td></tr>';
+                console.error('Error updating status:', error);
+                alert('Error updating status. Please try again.');
+            })
+            .finally(() => {
+                updateBtn.innerHTML = 'Update';
+                updateBtn.disabled = false;
             });
     }
+
+    function showCreatePurchaseOrderModal() {
+        // Reset the form
+        document.getElementById('createPOForm').reset();
+        document.getElementById('productsTableBody').innerHTML = '';
+
+        // Show the modal
+        const modal = new bootstrap.Modal(document.getElementById('createPurchaseOrderModal'));
+        modal.show();
+    }
+
+    function fetchProducts() {
+        fetch('/api/manager/products')
+            .then(response => response.json())
+            .then(data => {
+                productsData = data;
+            })
+            .catch(error => {
+                console.error('Error fetching products:', error);
+            });
+    }
+
+    function addProductRow() {
+        const tableBody = document.getElementById('productsTableBody');
+
+        // Create a new row
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <select class="form-select product-select" onchange="updateProductDetails(this)">
+                    <option value="">Select Product</option>
+                    ${productsData.map(product =>
+            `<option value="${product.product_id}" data-price="${product.price}">${product.product_id} - ${product.product_name}</option>`
+        ).join('')}
+                </select>
+            </td>
+            <td class="product-name"></td>
+            <td class="product-price"></td>
+            <td>
+                <input type="number" class="form-control quantity" min="1" value="1">
+            </td>
+            <td>
+                <button class="btn btn-sm btn-danger" onclick="removeProductRow(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+
+        tableBody.appendChild(row);
+    }
+
+    function updateProductDetails(selectElement) {
+        const row = selectElement.closest('tr');
+        const productId = selectElement.value;
+        const product = productsData.find(p => p.product_id == productId);
+
+        if (product) {
+            row.querySelector('.product-name').textContent = product.product_name;
+            row.querySelector('.product-price').textContent = `$${product.price.toFixed(2)}`;
+        } else {
+            row.querySelector('.product-name').textContent = '';
+            row.querySelector('.product-price').textContent = '';
+        }
+    }
+
+    function removeProductRow(button) {
+        const row = button.closest('tr');
+        row.remove();
+    }
+
+    function createPurchaseOrder() {
+        const supplierId = document.getElementById('supplierId').value;
+        const expectedDate = document.getElementById('expectedDate').value;
+        const orderDate = new Date(); // Current date (order date)
+
+        if (!supplierId) {
+            alert('Please select a supplier');
+            document.getElementById('supplierId').classList.add('is-invalid');
+            return;
+        } else {
+            document.getElementById('supplierId').classList.remove('is-invalid');
+        }
+
+        if (!expectedDate) {
+            alert('Please select an expected delivery date');
+            document.getElementById('expectedDate').classList.add('is-invalid');
+            return;
+        } else {
+            document.getElementById('expectedDate').classList.remove('is-invalid');
+        }
+
+        // Validate expected date is after order date
+        const expectedDateObj = new Date(expectedDate);
+        if (expectedDateObj <= orderDate) {
+            alert('Expected delivery date must be after the current date');
+            document.getElementById('expectedDate').classList.add('is-invalid');
+            return;
+        }
+
+        // Get all product rows
+        const rows = document.querySelectorAll('#productsTableBody tr');
+        if (rows.length === 0) {
+            alert('Please add at least one product to the order');
+            return;
+        }
+
+        // Prepare products data
+        const products = [];
+        let isValid = true;
+
+        rows.forEach(row => {
+            const productId = row.querySelector('.product-select').value;
+            const quantity = row.querySelector('.quantity').value;
+
+            if (!productId) {
+                isValid = false;
+                row.querySelector('.product-select').classList.add('is-invalid');
+                return;
+            } else {
+                row.querySelector('.product-select').classList.remove('is-invalid');
+            }
+
+            if (!quantity || quantity < 1) {
+                isValid = false;
+                row.querySelector('.quantity').classList.add('is-invalid');
+                return;
+            } else {
+                row.querySelector('.quantity').classList.remove('is-invalid');
+            }
+
+            const product = productsData.find(p => p.product_id == productId);
+            if (product) {
+                products.push({
+                    product_id: productId,
+                    price: product.price,
+                    quantity: quantity
+                });
+            }
+        });
+
+        if (!isValid) {
+            alert('Please fill in all product details correctly. Invalid fields are marked in red.');
+            return;
+        }
+
+        // Show loading state
+        const createBtn = document.querySelector('#createPurchaseOrderModal .btn-primary');
+        createBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Creating...';
+        createBtn.disabled = true;
+
+        // First check if supplier exists and is valid
+        fetch(`/api/manager/suppliers/${supplierId}/check`)
+            .then(response => response.json())
+            .then(supplierCheck => {
+                if (supplierCheck.error || !supplierCheck.exists || !supplierCheck.is_valid) {
+                    throw new Error('Supplier does not exist or is inactive');
+                }
+
+                // If supplier is valid, proceed with creating the order
+                const data = {
+                    supplier_id: supplierId,
+                    employee_id: 1, // Assuming this is the manager's ID (should be set from session in real app)
+                    expected_received_date: expectedDate,
+                    products: products
+                };
+
+                return fetch('/api/manager/purchase-orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Close the modal and refresh the data
+                bootstrap.Modal.getInstance(document.getElementById('createPurchaseOrderModal')).hide();
+                fetchPurchaseOrders();
+                alert('Purchase order created successfully!');
+            })
+            .catch(error => {
+                console.error('Error creating purchase order:', error);
+
+                if (error.message.includes('Supplier does not exist')) {
+                    document.getElementById('supplierId').classList.add('is-invalid');
+                    alert('Error: The selected supplier does not exist or is inactive. Please choose a valid supplier.');
+                } else if (error.message.includes('Expected delivery date')) {
+                    document.getElementById('expectedDate').classList.add('is-invalid');
+                    alert('Error: ' + error.message);
+                } else {
+                    alert('Error creating purchase order: ' + error.message);
+                }
+            })
+            .finally(() => {
+                createBtn.innerHTML = 'Create Purchase Order';
+                createBtn.disabled = false;
+            });
+    }
+    document.getElementById('newStatus').addEventListener('change', function () {
+        const receivedDateContainer = document.getElementById('receivedDateContainer');
+        if (this.value === 'Received') {
+            receivedDateContainer.style.display = 'block';
+            document.getElementById('receivedDate').valueAsDate = new Date();
+        } else {
+            receivedDateContainer.style.display = 'none';
+        }
+    });
 </script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4"
-    crossorigin="anonymous"></script>
-</body>
-
-</html>
-
 {% endblock %}
