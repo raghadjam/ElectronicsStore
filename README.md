@@ -18,8 +18,8 @@ A web-based application for managing an electronics store, built using Python, H
 - **Frontend:** HTML, CSS
 - **Database:** MySQL
 
-## 🧑‍💻 Authors
+##  Contributors
 
 - Raghad Jam ([@raghadjam](https://github.com/raghadjam))
-- Labiba Sharia ([@labibasharia](https://github.com/labibasharia))
+- Labiba Sharia ([@labibasharia](https://github.com/lsharia))
 
